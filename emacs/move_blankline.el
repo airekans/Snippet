@@ -13,4 +13,4 @@
  (move-beginning-of-line 0))
 
 (global-set-key (kbd "C-{") 'last-blank-block)
-(global-set-key (kbd "C-}") 'next-blank-block)')'}"))
+(global-set-key (kbd "C-}") 'next-blank-block)
