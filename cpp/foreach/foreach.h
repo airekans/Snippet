@@ -2,12 +2,7 @@
 #define _FOREACH_H_
 
 #include <boost/typeof/typeof.hpp>
-
-/// Utitilies to make a unique variable name.
-#define CONCAT_LINE(x) CONCAT(x, __LINE__)
-#define CONCAT(a, b) CONCAT_INDIRECT(a, b)
-#define CONCAT_INDIRECT(a, b) a ## b
-
+#include "concat.h"
 
 /// macro used to loop over the list/vector
 #define LIST_FOREACH(e, l)						\
@@ -36,7 +31,7 @@
     for (BOOST_AUTO(CONCAT_LINE(__i), (m).begin());			\
 	 CONCAT_LINE(__breakFlag) && CONCAT_LINE(__i) != (m).end();	\
 	 ++CONCAT_LINE(__i), CONCAT_LINE(__f) = 1)			\
-      for (BOOST_AUTO(const & key, CONCAT_LINE(__i)->first);			\
+      for (BOOST_AUTO(const & key, CONCAT_LINE(__i)->first);		\
 	   CONCAT_LINE(__f); CONCAT_LINE(__f) = 0)			\
 	for (BOOST_AUTO(& value, CONCAT_LINE(__i)->second);		\
 	     CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\

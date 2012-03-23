@@ -1,19 +1,20 @@
 # Add the BOOST PATH header files to CXXFLAGS
 # Add the gtest library path to LDFLAGS
+include ~/programming/make/Makefile
 
 CXXFLAGS += -g
 
-SRCS := ForeachUnitTest.cpp \
+SRCS := foreachUnitTest.cpp \
+	zipUnitTest.cpp \
 	main.cpp
 
 OBJS := $(SRCS:%.cpp=%.o)
 
-all: foreach.test
-
-ForeachUnitTest.cpp: Foreach.h
+%UnitTest.cpp: %.h
 	touch $@
+
+all: foreach.test
 
 foreach.test: $(OBJS)
 	g++ -o $@ $^ $(CXXFLAGS) $(LDFLAGS)
-
 
