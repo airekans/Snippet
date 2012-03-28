@@ -5,6 +5,8 @@
 #include <vector>
 #include <list>
 #include <utility>
+#include <string>
+#include <algorithm>
 #include <boost/foreach.hpp>
 #include <boost/assign/list_of.hpp>
 #include <boost/assign/std/vector.hpp>
@@ -224,6 +226,96 @@ TEST(TestSuite, list_foreach_test_vector)
   for (int i = 0; i < v.size(); ++i)
     {
       EXPECT_EQ(v[i], v2[i]);
+    }
+}
+
+TEST(TestSuite, map_foreach_key_test_empty_map)
+{
+  typedef map<int, int> TestMap;
+  TestMap m;
+  
+  int count = 0;
+  MAP_FOREACH_KEY(k, m)
+    {
+      ++count;
+    }
+
+  EXPECT_EQ(0, count);
+}
+
+TEST(TestSuite, map_foreach_key_test_simple)
+{
+  typedef map<string, int> TestMap;
+  TestMap m;
+  m = map_list_of("123", 1)("abc", 2)("bbb", 3);
+
+  TestMap m2;
+  MAP_FOREACH_KEY(k, m)
+    {
+      m2[k] = 1;
+    }
+
+  EXPECT_EQ(m.size(), m2.size());
+  BOOST_FOREACH(TestMap::value_type& i, m)
+    {
+      EXPECT_EQ(1, m2[i.first]);
+    }
+}
+
+TEST(TestSuite, map_foreach_key_test_break)
+{
+  typedef map<string, int> TestMap;
+  TestMap m;
+  m = map_list_of("123", 1)("abc", 2)("bbb", 3);
+
+  int count = 0;
+  TestMap m2;
+  MAP_FOREACH_KEY(k, m)
+    {
+      if (count == 2)
+	{
+	  break;
+	}
+      m2[k] = 1;
+      ++count;
+    }
+
+  EXPECT_NE(m.size(), m2.size());
+  EXPECT_EQ(2, m2.size());
+}
+
+TEST(TestSuite, map_foreach_value_test_empty)
+{
+  typedef map<string, int> TestMap;
+  TestMap m;
+
+  int count = 0;
+  MAP_FOREACH_VALUE(v, m)
+    {
+      ++count;
+    }
+
+  EXPECT_EQ(0, count);
+}
+
+
+TEST(TestSuite, map_foreach_value_test_simple)
+{
+  typedef map<string, int> TestMap;
+  TestMap m;
+  m = map_list_of("123", 1)("abc", 2)("bbb", 3);
+
+  vector<int> v;
+  MAP_FOREACH_VALUE(value, m)
+    {
+      v += value;
+    }
+
+  EXPECT_EQ(m.size(), v.size());
+  BOOST_FOREACH(TestMap::value_type& i, m)
+    {
+      const int value = i.second;
+      EXPECT_TRUE(find(v.begin(), v.end(), value) != v.end());
     }
 }
 

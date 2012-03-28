@@ -37,6 +37,28 @@
 	     CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\
 	     CONCAT_LINE(__f) = 0, CONCAT_LINE(__breakFlag) = 1)
 
+/// macro used to loop each key of the map
+#define MAP_FOREACH_KEY(key, m)						\
+  for (int CONCAT_LINE(__f) = 1, CONCAT_LINE(__breakFlag) = 1;		\
+       CONCAT_LINE(__f); CONCAT_LINE(__f) = 0)				\
+    for (BOOST_AUTO(CONCAT_LINE(__i), (m).begin());			\
+	 CONCAT_LINE(__breakFlag) && CONCAT_LINE(__i) != (m).end();	\
+	 ++CONCAT_LINE(__i), CONCAT_LINE(__f) = 1)			\
+      for (BOOST_AUTO(const & key, CONCAT_LINE(__i)->first);		\
+	   CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\
+	   CONCAT_LINE(__f) = 0, CONCAT_LINE(__breakFlag) = 1)
+  
+/// macro used to loop each value of the map
+#define MAP_FOREACH_VALUE(value, m)					\
+  for (int CONCAT_LINE(__f) = 1, CONCAT_LINE(__breakFlag) = 1;		\
+       CONCAT_LINE(__f); CONCAT_LINE(__f) = 0)				\
+    for (BOOST_AUTO(CONCAT_LINE(__i), (m).begin());			\
+	 CONCAT_LINE(__breakFlag) && CONCAT_LINE(__i) != (m).end();	\
+	 ++CONCAT_LINE(__i), CONCAT_LINE(__f) = 1)			\
+      for (BOOST_AUTO(& value, CONCAT_LINE(__i)->second);		\
+	   CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\
+	   CONCAT_LINE(__f) = 0, CONCAT_LINE(__breakFlag) = 1)
+
 
 
 #endif
