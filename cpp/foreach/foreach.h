@@ -5,13 +5,25 @@
 #include "concat.h"
 
 /// macro used to loop over the list/vector
+/// Note that by default "e" is created by copying
+/// the value of the element in l.
+/// If you want to change the value of the element of l,
+/// add a reference mark before the name of e.
+///
+/// For example:
+/// LIST_FOREACH(element, listOfInts)
+/// { ++element; }
+/// would not change the content of listOfInts
+/// You should write as follow:
+/// LIST_FOREACH(&element, listOfInts)
+/// { ++element; }
 #define LIST_FOREACH(e, l)						\
   for (int CONCAT_LINE(__f) = 1, CONCAT_LINE(__breakFlag) = 1;		\
        CONCAT_LINE(__f); CONCAT_LINE(__f) = 0)				\
     for (BOOST_AUTO(CONCAT_LINE(__i), (l).begin());			\
 	 CONCAT_LINE(__breakFlag) && CONCAT_LINE(__i) != (l).end();	\
 	 ++CONCAT_LINE(__i), CONCAT_LINE(__f) = 1)			\
-      for (BOOST_AUTO(& e, *CONCAT_LINE(__i));				\
+      for (BOOST_AUTO(e, *CONCAT_LINE(__i));				\
 	   CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\
 	   CONCAT_LINE(__f) = 0, CONCAT_LINE(__breakFlag) = 1)
 
@@ -33,7 +45,7 @@
 	 ++CONCAT_LINE(__i), CONCAT_LINE(__f) = 1)			\
       for (BOOST_AUTO(const & key, CONCAT_LINE(__i)->first);		\
 	   CONCAT_LINE(__f); CONCAT_LINE(__f) = 0)			\
-	for (BOOST_AUTO(& value, CONCAT_LINE(__i)->second);		\
+	for (BOOST_AUTO(value, CONCAT_LINE(__i)->second);		\
 	     CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\
 	     CONCAT_LINE(__f) = 0, CONCAT_LINE(__breakFlag) = 1)
 
@@ -55,10 +67,9 @@
     for (BOOST_AUTO(CONCAT_LINE(__i), (m).begin());			\
 	 CONCAT_LINE(__breakFlag) && CONCAT_LINE(__i) != (m).end();	\
 	 ++CONCAT_LINE(__i), CONCAT_LINE(__f) = 1)			\
-      for (BOOST_AUTO(& value, CONCAT_LINE(__i)->second);		\
+      for (BOOST_AUTO(value, CONCAT_LINE(__i)->second);			\
 	   CONCAT_LINE(__f) && (--CONCAT_LINE(__breakFlag) < 1);	\
 	   CONCAT_LINE(__f) = 0, CONCAT_LINE(__breakFlag) = 1)
-
 
 
 #endif

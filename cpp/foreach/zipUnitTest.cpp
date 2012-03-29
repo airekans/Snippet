@@ -12,7 +12,7 @@ using namespace boost::assign;
 using namespace zip_foreach;
 using namespace zip_foreach::__impl;
 
-class ZipTestSuite : public ::testing::Test
+class ZipForeachTestSuite : public ::testing::Test
 {
 public:
   typedef vector<string> TestVector;
@@ -32,7 +32,7 @@ protected:
 };
 
 
-TEST_F(ZipTestSuite, test_syntax)
+TEST_F(ZipForeachTestSuite, test_syntax)
 {
   ZC z(v, l);
   ZC::iterator i = z.begin();
@@ -49,7 +49,7 @@ TEST_F(ZipTestSuite, test_syntax)
   EXPECT_EQ(1.2, lBegin);
 }
 
-TEST_F(ZipTestSuite, test_zip_function)
+TEST_F(ZipForeachTestSuite, test_zip_function)
 {
   BOOST_AUTO(zc, zip(v, l));
   BOOST_AUTO(i, zc.begin());
@@ -61,7 +61,7 @@ TEST_F(ZipTestSuite, test_zip_function)
   EXPECT_EQ(1.2, lBegin);
 }
 
-TEST_F(ZipTestSuite, test_simple_for)
+TEST_F(ZipForeachTestSuite, test_simple_for)
 {
   BOOST_AUTO(zc, zip(v, l));
   
@@ -89,7 +89,7 @@ TEST_F(ZipTestSuite, test_simple_for)
     }
 }
 
-TEST_F(ZipTestSuite, test_not_same_length_container)
+TEST_F(ZipForeachTestSuite, test_not_same_length_container)
 {
   v += "add";
 
@@ -123,7 +123,7 @@ TEST_F(ZipTestSuite, test_not_same_length_container)
   
 }
 
-TEST_F(ZipTestSuite, test_not_same_length_zip_2_foreach)
+TEST_F(ZipForeachTestSuite, test_not_same_length_zip_2_foreach)
 {
   v += "add";
 
@@ -152,6 +152,64 @@ TEST_F(ZipTestSuite, test_not_same_length_zip_2_foreach)
     {
       EXPECT_EQ(*it1, *it2);
     }
-  
 }
+
+TEST_F(ZipForeachTestSuite, test_zip_2_foreach_const)
+{
+  const TestVector &vRef = v;
+  const TestList &lRef = l;
+
+  TestVector v2;
+  TestList l2;
+  TWO_LIST_FOREACH(i1, i2, vRef, lRef)
+    {
+      v2 += i1;
+      l2 += i2;
+    }
+
+  EXPECT_EQ(vRef.size(), v2.size());
+  EXPECT_EQ(lRef.size(), l2.size());
+
+  for (size_t i = 0; i < v2.size(); ++i)
+    {
+      EXPECT_EQ(vRef[i], v2[i]);
+    }
+
+  BOOST_AUTO(it1, lRef.begin());
+  BOOST_AUTO(it2, l2.begin());
+  for ( ; it1 != lRef.end() && it2 != l2.end(); ++it1, ++it2)
+    {
+      EXPECT_EQ(*it1, *it2);
+    }
+}
+
+TEST_F(ZipForeachTestSuite, test_zip_2_foreach_change_value)
+{
+  TestVector v2;
+  TestList l2;
+  TWO_LIST_FOREACH(&i1, &i2, v, l)
+    {
+      v2 += i1 + "a";
+      i1 += "a";
+
+      l2 += i2 + 1;
+      i2 += 1.0;
+    }
+
+  EXPECT_EQ(v.size(), v2.size());
+  EXPECT_EQ(l.size(), l2.size());
+
+  for (size_t i = 0; i < v2.size(); ++i)
+    {
+      EXPECT_EQ(v2[i], v[i]);
+    }
+
+  BOOST_AUTO(it1, l.begin());
+  BOOST_AUTO(it2, l2.begin());
+  for ( ; it1 != l.end() && it2 != l2.end(); ++it1, ++it2)
+    {
+      EXPECT_EQ(*it2, *it1);
+    }
+}
+
 

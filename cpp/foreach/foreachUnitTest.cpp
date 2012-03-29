@@ -48,6 +48,24 @@ TEST(TestSuite, map_foreach_test_empty)
   EXPECT_EQ(0, loopCount);
 }
 
+TEST(ForeachTestSuite, map_foreach_test_const)
+{
+  typedef map<string, int> TestMap;
+  const TestMap m = map_list_of("abc", 1)("map", 2)("key", 3);
+
+  TestMap m2;
+  MAP_FOREACH(key, value, m)
+    {
+      m2[key] = value;
+    }
+
+  EXPECT_EQ(m.size(), m2.size());
+  BOOST_FOREACH(TestMap::value_type p, m)
+    {
+      EXPECT_EQ(p.second, m2[p.first]);
+    }
+}
+
 TEST(TestSuite, map_foreach_test_vector)
 {
   using namespace boost::assign;
@@ -173,14 +191,14 @@ TEST(TestSuite, map_foreach_test_change_value)
   TestMap m = map_list_of(1, 1)(2, 2)(3, 3);
 
   TestMap m2;
-  MAP_FOREACH(key, value, m)
+  MAP_FOREACH(key, &value, m)
     {
       m2[key] = value + 1;
       ++value;
     }
 
   EXPECT_EQ(m.size(), m2.size());
-  BOOST_FOREACH(TestMap::value_type& i, m2)
+  BOOST_FOREACH(TestMap::value_type& i, m)
     {
       BOOST_AUTO(key, i.first);
       BOOST_AUTO(value, i.second);
