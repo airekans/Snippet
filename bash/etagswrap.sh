@@ -6,6 +6,11 @@ then
     exit 0
 fi
 
+if [ ! -f "$tag_file_path" ]
+then
+    touch $tag_file_path
+fi
+
 root_dir="$1"
 file_ext="$2"
 tag_file_path=~/.emacs.d/tags/TAGS.auto_generated
