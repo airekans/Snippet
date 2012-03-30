@@ -3,6 +3,7 @@
 if [ $# -lt 2 ]
 then
     echo "Please give directory and extension to the command"
+    exit 0
 fi
 
 root_dir="$1"
