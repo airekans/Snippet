@@ -11,11 +11,15 @@ public:
     BigInt(const char* str_num);
     BigInt(int num);
     BigInt(const BigInt& big_int);
+    BigInt& operator=(const BigInt& big_int);
 
     void Dump(std::ostream& ostream = std::cout) const;
 
     BigInt Add(const BigInt& big_int) const;
-    
+
+    bool IsEqual(const BigInt& big_int) const;
+    bool IsGreaterThan(const BigInt& big_int) const;
+
 private:
     int m_length;
 #define MAXN 1000
@@ -34,7 +38,7 @@ BigInt<T>::BigInt(const char* str_num)
     m_length = strlen(str_num);
     for (int i = 0; i < m_length; ++i)
     {
-	m_digits[i] = static_cast<T>(str_num[m_length - i - 1] - '0');
+        m_digits[i] = static_cast<T>(str_num[m_length - i - 1] - '0');
     }
 }
 
@@ -44,8 +48,8 @@ BigInt<T>::BigInt(int num)
 {
     while (num > 0)
     {
-	m_digits[m_length++] = static_cast<T>(num % 10);
-	num /= 10;
+        m_digits[m_length++] = static_cast<T>(num % 10);
+        num /= 10;
     }
 }
 
@@ -55,18 +59,30 @@ BigInt<T>::BigInt(const BigInt& big_int)
     m_length = big_int.m_length;
     for (int i = 0; i < m_length; ++i)
     {
-	m_digits[i] = big_int.m_digits[i];
+        m_digits[i] = big_int.m_digits[i];
     }
 }
 
-
+template <typename T>
+BigInt<T>& BigInt<T>::operator=(const BigInt& big_int)
+{
+    if (this != &big_int)
+    {
+        m_length = big_int.m_length;
+        for (int i = 0; i < m_length; ++i)
+        {
+            m_digits[i] = big_int.m_digits[i];
+        }
+    }
+    return *this;
+}
 
 template <typename T>
 void BigInt<T>::Dump(std::ostream& ostream) const
 {
     for (int i = 0; i < m_length; ++i)
     {
-	std::cout << static_cast<int>(m_digits[m_length - i - 1]);
+        std::cout << static_cast<int>(m_digits[m_length - i - 1]);
     }
 }
 
@@ -78,24 +94,71 @@ BigInt<T> BigInt<T>::Add(const BigInt& big_int) const
     int carry = 0;
     for (int i = 0; i < size; ++i)
     {
-	const int lhs = static_cast<int>(i < m_length? m_digits[i]: (T)0);
-	const int rhs = static_cast<int>(i < big_int.m_length? big_int.m_digits[i]: (T)0);
-	const int tmp = lhs + rhs + carry;
-	result.m_digits[i] = static_cast<T>(tmp % 10);
-	carry = tmp / 10;
+        const int lhs = static_cast<int>(i < m_length? m_digits[i]: (T)0);
+        const int rhs = static_cast<int>(i < big_int.m_length? big_int.m_digits[i]: (T)0);
+        const int tmp = lhs + rhs + carry;
+        result.m_digits[i] = static_cast<T>(tmp % 10);
+        carry = tmp / 10;
     }
 
     if (carry > 0)
     {
-	result.m_digits[size] = static_cast<T>(carry);
-	result.m_length = size + 1;
+        result.m_digits[size] = static_cast<T>(carry);
+        result.m_length = size + 1;
     }
     else
     {
-	result.m_length = size;
+        result.m_length = size;
     }
     return result;
 }
+
+template <typename T>
+bool BigInt<T>::IsEqual(const BigInt& big_int) const
+{
+    if (m_length != big_int.m_length)
+    {
+        return false;
+    }
+
+    for (int i = 0; i < m_length; ++i)
+    {
+        if (m_digits[i] != big_int.m_digits[i])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+template <typename T>
+bool BigInt<T>::IsGreaterThan(const BigInt& big_int) const
+{
+    if (m_length > big_int.m_length)
+    {
+        return true;
+    }
+    else if (m_length < big_int.m_length)
+    {
+        return false;
+    }
+    else
+    {
+        for (int i = m_length - 1; i >= 0; ++i)
+        {
+            if (m_digits[i] > big_int.m_digits[i])
+            {
+                return true;
+            }
+            else if (m_digits[i] < big_int.m_digits[i])
+            {
+                return false;
+            }
+        }
+        return false;
+    }
+}
+
 
 template <typename T>
 BigInt<T> operator+(const BigInt<T>& lhs, const BigInt<T>& rhs)
@@ -103,6 +166,17 @@ BigInt<T> operator+(const BigInt<T>& lhs, const BigInt<T>& rhs)
     return lhs.Add(rhs);
 }
 
+template <typename T>
+bool operator==(const BigInt<T>& lhs, const BigInt<T>& rhs)
+{
+    return lhs.IsEqual(rhs);
+}
+
+template <typename T>
+bool operator!=(const BigInt<T>& lhs, const BigInt<T>& rhs)
+{
+    return !lhs.IsEqual(rhs);
+}
 
 
 template <typename T>
