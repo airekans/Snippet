@@ -1,5 +1,8 @@
 // -*- mode: c++ -*-
 
+#ifndef _BIGINT_H_
+#define _BIGINT_H_
+
 #include <cstring>
 #include <iostream>
 
@@ -186,4 +189,4 @@ std::ostream& operator<<(std::ostream& ostream, BigInt<T>& big_int)
     return ostream;
 }
 
-
+#endif
