@@ -20,11 +20,33 @@ public:
     typedef std::string ValueType;
     typedef std::pair<KeyType, ValueType> Elem;
 
+    static void DiskRead(const BTreeNode* node)
+    {
+        // TODO: read the node from disk
+    }
+
+    static void DiskWrite(const BTreeNode& node)
+    {
+        // TODO: write the node to the disk
+    }
+
+
     BTreeNode(const unsigned max_key_num)
     : m_max_key_num(max_key_num),
       m_key_num(0)
     {
         memset(m_children, 0, 1025 * sizeof(m_children[0]));
+    }
+
+    ~BTreeNode()
+    {
+        if (m_key_num > 0)
+        {
+            for (int i = 0; i <= m_key_num; ++i)
+            {
+                delete m_children[i];
+            }
+        }
     }
 
     void SetIsLeave(const bool is_leave)
@@ -37,15 +59,6 @@ public:
         // TODO: add implementation
     }
 
-    void SetItem(const unsigned i, const KeyType key, const ValueType& value)
-    {
-        if (i < m_key_num)
-        {
-            m_elements[i].first = key;
-            m_elements[i].second = value;
-        }
-    }
-
     unsigned GetMaxKeyNum() const
     {
         return m_max_key_num;
@@ -54,11 +67,6 @@ public:
     unsigned GetKeyNum() const
     {
         return m_key_num;
-    }
-
-    void SetKeyNum(const unsigned key_num)
-    {
-        m_key_num = key_num <= 1024 ? key_num : 1024;
     }
 
     /// get the key at index i, if i >= m_key_num,
@@ -80,6 +88,59 @@ public:
         return i <= m_key_num ? m_children[i] : NULL;
     }
 
+    void SplitChild(const unsigned i, BTreeNode& child)
+    {
+        const unsigned max_key_num = m_max_key_num;
+        const unsigned min_key_num = max_key_num / 2;
+        BTreeNode* new_node = new BTreeNode(max_key_num);
+        new_node->SetIsLeave(child.IsLeave());
+
+        new_node->SetKeyNum(min_key_num);
+        for (int j = 0; j < min_key_num; ++j)
+        {
+            const Elem& e = child.m_elements[min_key_num + 1 + j];
+            new_node->SetItem(j, e.first, e.second);
+        }
+
+        if (!child.IsLeave())
+        {
+            for (int j = 0; j <= min_key_num; ++j)
+            {
+                new_node->m_children[j] = child.m_children[min_key_num + 1 + j];
+            }
+        }
+
+        child.SetKeyNum(min_key_num);
+        for (int j = GetKeyNum(); j > i; --j)
+        {
+            m_children[j + 1] = m_children[j];
+        }
+        m_children[i + 1] = new_node;
+
+        for (int j = GetKeyNum() - 1; j >= i; --j)
+        {
+            m_elements[j + 1] = m_elements[j];
+        }
+        m_elements[i] = child.m_elements[min_key_num];
+        ++m_key_num;
+
+        DiskWrite(child);
+        DiskWrite(*new_node);
+        DiskWrite(*this);
+    }
+
+private:
+    void SetItem(const unsigned i, const KeyType key, const ValueType& value)
+    {
+        m_elements[i].first = key;
+        m_elements[i].second = value;
+    }
+
+    void SetKeyNum(const unsigned key_num)
+    {
+        m_key_num = key_num <= 1024 ? key_num : 1024;
+    }
+
 private:
     const unsigned m_max_key_num;
     Elem m_elements[1024];
@@ -95,7 +156,7 @@ public:
     {
         m_root = new BTreeNode(max_key_num);
         m_root->SetIsLeave(true);
-        DiskWrite(*m_root);
+        BTreeNode::DiskWrite(*m_root);
     }
 
     ~BTree()
@@ -110,16 +171,6 @@ public:
     }
 
 private:
-    void DiskRead(const BTreeNode* node) const
-    {
-        // TODO: read the node from disk
-    }
-
-    void DiskWrite(const BTreeNode& node) const
-    {
-        // TODO: write the node to the disk
-    }
-
     bool Find(const BTreeNode& node, const int key,
               BTreeNode** out_node, int* out_index) const
     {
@@ -143,16 +194,9 @@ private:
         else
         {
             const BTreeNode* child_node = node.GetChild(i);
-            DiskRead(child_node);
+            BTreeNode::DiskRead(child_node);
             return Find(*child_node, key, out_node, out_index);
         }
-    }
-
-    void SplitNode(BTreeNode& parent, const unsigned i, BTreeNode& node)
-    {
-        BTreeNode* new_node = new BTreeNode(parent.GetMaxKeyNum());
-        new_node->SetIsLeave(node.IsLeave());
-
     }
 
 private:
