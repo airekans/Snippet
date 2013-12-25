@@ -92,21 +92,21 @@ public:
     {
         const unsigned max_key_num = m_max_key_num;
         const unsigned min_key_num = max_key_num / 2;
-        BTreeNode* new_node = new BTreeNode(max_key_num);
-        new_node->SetIsLeave(child.IsLeave());
+        BTreeNode* new_child = new BTreeNode(max_key_num);
+        new_child->SetIsLeave(child.IsLeave());
 
-        new_node->SetKeyNum(min_key_num);
+        new_child->SetKeyNum(min_key_num);
         for (int j = 0; j < min_key_num; ++j)
         {
             const Elem& e = child.m_elements[min_key_num + 1 + j];
-            new_node->SetItem(j, e.first, e.second);
+            new_child->SetItem(j, e.first, e.second);
         }
 
         if (!child.IsLeave())
         {
             for (int j = 0; j <= min_key_num; ++j)
             {
-                new_node->m_children[j] = child.m_children[min_key_num + 1 + j];
+                new_child->m_children[j] = child.m_children[min_key_num + 1 + j];
             }
         }
 
@@ -115,7 +115,7 @@ public:
         {
             m_children[j + 1] = m_children[j];
         }
-        m_children[i + 1] = new_node;
+        m_children[i + 1] = new_child;
 
         for (int j = GetKeyNum() - 1; j >= i; --j)
         {
@@ -125,8 +125,23 @@ public:
         ++m_key_num;
 
         DiskWrite(child);
-        DiskWrite(*new_node);
+        DiskWrite(*new_child);
         DiskWrite(*this);
+    }
+
+    void InsertNonfull(const KeyType key, const ValueType& value)
+    {
+        // TODO: add implementation
+    }
+
+    void SetKeyNum(const unsigned key_num)
+    {
+        m_key_num = key_num <= 1024 ? key_num : 1024;
+    }
+
+    void SetChild(const unsigned i, BTreeNode* child)
+    {
+        m_children[i] = child;
     }
 
 private:
@@ -134,11 +149,6 @@ private:
     {
         m_elements[i].first = key;
         m_elements[i].second = value;
-    }
-
-    void SetKeyNum(const unsigned key_num)
-    {
-        m_key_num = key_num <= 1024 ? key_num : 1024;
     }
 
 private:
@@ -166,8 +176,27 @@ public:
 
     bool Find(const int key, BTreeNode** out_node, int* out_index) const
     {
-        // TODO: add implementation
         return Find(*m_root, key, out_node, out_index);
+    }
+
+    void Insert(const int key, const std::string& value)
+    {
+        const unsigned max_key_num = m_root->GetMaxKeyNum();
+        const unsigned min_key_num = max_key_num / 2;
+        if (m_root->GetKeyNum() == min_key_num)
+        {
+            BTreeNode* old_root = m_root;
+            m_root = new BTreeNode(max_key_num);
+            m_root->SetIsLeave(false);
+            m_root->SetKeyNum(0);
+            m_root->SetChild(0, old_root);
+            m_root->SplitChild(0, *old_root);
+            m_root->InsertNonfull(key, value);
+        }
+        else
+        {
+            m_root->InsertNonfull(key, value);
+        }
     }
 
 private:
