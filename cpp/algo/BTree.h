@@ -131,7 +131,37 @@ public:
 
     void InsertNonfull(const KeyType key, const ValueType& value)
     {
-        // TODO: add implementation
+        unsigned i = GetKeyNum() - 1;
+        if (IsLeave())
+        {
+            while (i >= 0 && key < GetKey(i))
+            {
+                m_elements[i + 1] = m_elements[i];
+                --i;
+            }
+            SetItem(i + 1, key, value);
+            ++m_key_num;
+            DiskWrite(*this);
+        }
+        else
+        {
+            while (i >= 0 && key < GetKey(i))
+            {
+                --i;
+            }
+            ++i;
+            BTreeNode* child = m_children[i];
+            DiskRead(child);
+            if (child->GetKeyNum() == m_max_key_num)
+            {
+                SplitChild(i, *child);
+                if (key > GetKey(i))
+                {
+                    ++i;
+                }
+            }
+            child->InsertNonfull(key, value);
+        }
     }
 
     void SetKeyNum(const unsigned key_num)
