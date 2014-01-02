@@ -42,7 +42,7 @@ public:
     {
         if (m_key_num > 0)
         {
-            for (int i = 0; i <= m_key_num; ++i)
+            for (unsigned i = 0; i <= m_key_num; ++i)
             {
                 delete m_children[i];
             }
@@ -96,7 +96,7 @@ public:
         new_child->SetIsLeave(child.IsLeave());
 
         new_child->SetKeyNum(min_key_num);
-        for (int j = 0; j < min_key_num; ++j)
+        for (unsigned j = 0; j < min_key_num; ++j)
         {
             const Elem& e = child.m_elements[min_key_num + 1 + j];
             new_child->SetItem(j, e.first, e.second);
@@ -104,20 +104,20 @@ public:
 
         if (!child.IsLeave())
         {
-            for (int j = 0; j <= min_key_num; ++j)
+            for (unsigned j = 0; j <= min_key_num; ++j)
             {
                 new_child->m_children[j] = child.m_children[min_key_num + 1 + j];
             }
         }
 
         child.SetKeyNum(min_key_num);
-        for (int j = GetKeyNum(); j > i; --j)
+        for (unsigned j = GetKeyNum(); j > i; --j)
         {
             m_children[j + 1] = m_children[j];
         }
         m_children[i + 1] = new_child;
 
-        for (int j = GetKeyNum() - 1; j >= i; --j)
+        for (unsigned j = GetKeyNum() - 1; j >= i; --j)
         {
             m_elements[j + 1] = m_elements[j];
         }
@@ -131,21 +131,21 @@ public:
 
     void InsertNonfull(const KeyType key, const ValueType& value)
     {
-        unsigned i = GetKeyNum() - 1;
+        int i = static_cast<int>(GetKeyNum()) - 1;
         if (IsLeave())
         {
-            while (i >= 0 && key < GetKey(i))
+            while (i >= 0 && key < GetKey(static_cast<unsigned>(i)))
             {
                 m_elements[i + 1] = m_elements[i];
                 --i;
             }
-            SetItem(i + 1, key, value);
+            SetItem(static_cast<unsigned>(i) + 1, key, value);
             ++m_key_num;
             DiskWrite(*this);
         }
         else
         {
-            while (i >= 0 && key < GetKey(i))
+            while (i >= 0 && key < GetKey(static_cast<unsigned>(i)))
             {
                 --i;
             }
@@ -154,8 +154,8 @@ public:
             DiskRead(child);
             if (child->GetKeyNum() == m_max_key_num)
             {
-                SplitChild(i, *child);
-                if (key > GetKey(i))
+                SplitChild(static_cast<unsigned>(i), *child);
+                if (key > GetKey(static_cast<unsigned>(i)))
                 {
                     ++i;
                 }
@@ -230,7 +230,7 @@ public:
     }
 
 private:
-    bool Find(const BTreeNode& node, const int key,
+    bool Find(BTreeNode& node, const int key,
               BTreeNode** out_node, int* out_index) const
     {
         const unsigned key_num = node.GetKeyNum();
@@ -252,7 +252,7 @@ private:
         }
         else
         {
-            const BTreeNode* child_node = node.GetChild(i);
+            BTreeNode* child_node = node.GetChild(i);
             BTreeNode::DiskRead(child_node);
             return Find(*child_node, key, out_node, out_index);
         }
