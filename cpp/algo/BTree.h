@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include <cstring>
+#include <iostream>
 
 namespace snippet {
 namespace algo {
@@ -31,6 +32,7 @@ public:
     }
 
 
+    /// max_key_num should be an odd number
     BTreeNode(const unsigned max_key_num)
     : m_max_key_num(max_key_num),
       m_key_num(0)
@@ -57,6 +59,48 @@ public:
     void AddItem(const KeyType key, const ValueType& value)
     {
         // TODO: add implementation
+    }
+
+    unsigned GetSize() const
+    {
+        unsigned total_key_num = GetKeyNum();
+        if (total_key_num > 0 && !IsLeave())
+        {
+            for (unsigned i = 0; i <= GetKeyNum(); ++i)
+            {
+                const BTreeNode* child = GetChild(i);
+                if (child)
+                {
+                    total_key_num += child->GetSize();
+                }
+            }
+        }
+
+        return total_key_num;
+    }
+
+    void Dump(const int level) const
+    {
+        std::cout << '[' << level << ']';
+        std::cout << "key_num:" << m_key_num << " elements: ";
+        const unsigned key_num = GetKeyNum();
+        for (unsigned i = 0; i < key_num; ++i)
+        {
+            std::cout << GetKey(i) << ' ';
+        }
+        std::cout << std::endl;
+
+        if (key_num > 0 && !IsLeave())
+        {
+            for (unsigned i = 0; i <= key_num; ++i)
+            {
+                const BTreeNode* child = GetChild(i);
+                if (child)
+                {
+                    child->Dump(level + 1);
+                }
+            }
+        }
     }
 
     unsigned GetMaxKeyNum() const
@@ -117,7 +161,8 @@ public:
         }
         m_children[i + 1] = new_child;
 
-        for (unsigned j = GetKeyNum() - 1; j >= i; --j)
+        for (int j = static_cast<int>(GetKeyNum()) - 1;
+             j >= static_cast<int>(i); --j)
         {
             m_elements[j + 1] = m_elements[j];
         }
@@ -204,6 +249,17 @@ public:
         delete m_root;
     }
 
+    unsigned GetSize() const
+    {
+        return m_root->GetSize();
+    }
+
+    void Dump() const
+    {
+        std::cout << "max_key_num:" << m_root->GetMaxKeyNum() << std::endl;
+        m_root->Dump(0);
+    }
+
     bool Find(const int key, BTreeNode** out_node, int* out_index) const
     {
         return Find(*m_root, key, out_node, out_index);
@@ -212,8 +268,7 @@ public:
     void Insert(const int key, const std::string& value)
     {
         const unsigned max_key_num = m_root->GetMaxKeyNum();
-        const unsigned min_key_num = max_key_num / 2;
-        if (m_root->GetKeyNum() == min_key_num)
+        if (m_root->GetKeyNum() == max_key_num)
         {
             BTreeNode* old_root = m_root;
             m_root = new BTreeNode(max_key_num);
@@ -241,8 +296,11 @@ private:
         }
         if (i < key_num && key == node.GetKey(i))
         {
-            *out_node = &node;
-            *out_index = i;
+            if (out_node)
+            {
+                *out_node = &node;
+                *out_index = i;
+            }
             return true;
         }
 
@@ -259,8 +317,6 @@ private:
     }
 
 private:
-    typedef std::pair<int, std::string> Elem;
-
     BTreeNode* m_root;
 };
 
