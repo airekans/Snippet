@@ -7,6 +7,7 @@
 
 #include "BTree.h"
 #include <gtest/gtest.h>
+#include <memory>
 
 using snippet::algo::BTree;
 
@@ -34,23 +35,29 @@ TEST(BTree, TestInsert)
     ASSERT_EQ(static_cast<unsigned>(2), btree.GetSize());
 }
 
-TEST(BTree, TestInsertWithLeave)
+class BTreeValueTest : public ::testing::TestWithParam<int>
+{};
+
+TEST_P(BTreeValueTest, TestInsertWithLeave)
 {
+    const int times = GetParam();
     BTree btree(5);
 
-    btree.Insert(1, "a");
-    for (int i = 0; i < 10; ++i)
+    for (int i = 0; i < times; ++i)
     {
         btree.Insert(i, "a");
     }
-    btree.Dump();
 
-    ASSERT_EQ(static_cast<unsigned>(10), btree.GetSize());
-    for (int i = 0; i < 10; ++i)
+    ASSERT_EQ(static_cast<unsigned>(times), btree.GetSize());
+    for (int i = 0; i < times; ++i)
     {
         EXPECT_TRUE(btree.Find(i, NULL, NULL)) << "i: " << i;
     }
 }
+
+INSTANTIATE_TEST_CASE_P(TestBTreeInsert,
+                        BTreeValueTest,
+                        ::testing::Range(3, 21));
 
 TEST(BTree, TestFind)
 {

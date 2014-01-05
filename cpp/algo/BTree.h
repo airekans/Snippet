@@ -205,7 +205,7 @@ public:
                     ++i;
                 }
             }
-            child->InsertNonfull(key, value);
+            m_children[i]->InsertNonfull(key, value);
         }
     }
 
