@@ -144,3 +144,12 @@ TEST(BTree, TestFind)
     ASSERT_TRUE(btree.Find(2, NULL, NULL));
     ASSERT_FALSE(btree.Find(3, NULL, NULL));
 }
+
+TEST(BTree, TestFindWithEmptyTree)
+{
+    BTree btree(7);
+
+    ASSERT_FALSE(btree.Find(1, NULL, NULL));
+    ASSERT_FALSE(btree.Find(2, NULL, NULL));
+    ASSERT_FALSE(btree.Find(3, NULL, NULL));
+}
