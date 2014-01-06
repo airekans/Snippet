@@ -209,6 +209,33 @@ public:
         }
     }
 
+    bool Find(const KeyType key, unsigned* idx) const
+    {
+        for (unsigned i = 0; i < m_key_num; ++i)
+        {
+            if (key == GetKey(i))
+            {
+                *idx = i;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void FindNextAndDelete(const KeyType key)
+    {
+
+    }
+
+    void Delete(const unsigned idx)
+    {
+        for (unsigned i = idx + 1; i < m_key_num; ++i)
+        {
+            m_elements[i - 1] = m_elements[i];
+        }
+        --m_key_num;
+    }
+
     void SetKeyNum(const unsigned key_num)
     {
         m_key_num = key_num <= 1024 ? key_num : 1024;
@@ -284,6 +311,11 @@ public:
         }
     }
 
+    void Delete(const int key)
+    {
+
+    }
+
 private:
     bool Find(BTreeNode& node, const int key,
               BTreeNode** out_node, int* out_index) const
@@ -313,6 +345,33 @@ private:
             BTreeNode* child_node = node.GetChild(i);
             BTreeNode::DiskRead(child_node);
             return Find(*child_node, key, out_node, out_index);
+        }
+    }
+
+    void Delete(BTreeNode& node, const int key)
+    {
+        unsigned key_idx;
+        bool is_key_found = false;
+        if ((is_key_found = node.Find(key, &key_idx)) && node.IsLeave())
+        {
+            node.Delete(key_idx);
+            return;
+        }
+        else if (is_key_found && !node.IsLeave())
+        {
+            const unsigned min_key_num = node.GetMaxKeyNum() / 2;
+            BTreeNode* child = node.GetChild(key_idx);
+            if (child->GetKeyNum() > min_key_num)
+            {
+                return;
+            }
+
+            child = node.GetChild(key_idx + 1);
+            if (child->GetKeyNum() > min_key_num)
+            {
+                return;
+            }
+
         }
     }
 
