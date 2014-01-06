@@ -8,6 +8,12 @@
 #include "BTree.h"
 #include <gtest/gtest.h>
 #include <memory>
+#include <ctime>
+#include <cstdlib>
+#include <algorithm>
+#include <vector>
+#include <string>
+#include <sstream>
 
 using snippet::algo::BTree;
 
@@ -36,7 +42,13 @@ TEST(BTree, TestInsert)
 }
 
 class BTreeValueTest : public ::testing::TestWithParam<int>
-{};
+{
+public:
+    static void SetUpTestCase()
+    {
+        srand(unsigned(time(NULL)));
+    }
+};
 
 TEST_P(BTreeValueTest, TestInsertWithLeave)
 {
@@ -49,6 +61,68 @@ TEST_P(BTreeValueTest, TestInsertWithLeave)
     }
 
     ASSERT_EQ(static_cast<unsigned>(times), btree.GetSize());
+    for (int i = 0; i < times; ++i)
+    {
+        EXPECT_TRUE(btree.Find(i, NULL, NULL)) << "i: " << i;
+    }
+}
+
+TEST_P(BTreeValueTest, TestInsertWithReverseOrder)
+{
+    const int times = GetParam();
+    BTree btree(5);
+
+    for (int i = times; i > 0; --i)
+    {
+        btree.Insert(i, "a");
+    }
+
+    ASSERT_EQ(static_cast<unsigned>(times), btree.GetSize());
+    for (int i = times; i > 0; --i)
+    {
+        EXPECT_TRUE(btree.Find(i, NULL, NULL)) << "i: " << i;
+    }
+}
+
+namespace {
+    template<typename T>
+    std::string VectorToString(const std::vector<T>& v)
+    {
+        if (v.empty())
+        {
+            return "";
+        }
+
+        std::ostringstream oss;
+        for (unsigned i = 0; i < v.size() - 1; ++i)
+        {
+            oss << v[i] << ' ';
+        }
+        oss << v.back();
+        return oss.str();
+    }
+}
+
+TEST_P(BTreeValueTest, TestInsertWithRandomOrder)
+{
+    const int times = GetParam();
+    BTree btree(5);
+
+    // generate a vector<int> with size times
+    std::vector<int> numbers;
+    for (int i = 0; i < times; ++i)
+    {
+        numbers.push_back(i);
+    }
+    std::random_shuffle(numbers.begin(), numbers.end());
+
+    for (int i = 0; i < times; ++i)
+    {
+        btree.Insert(numbers[i], "a");
+    }
+
+    ASSERT_EQ(static_cast<unsigned>(times), btree.GetSize())
+        << VectorToString(numbers);
     for (int i = 0; i < times; ++i)
     {
         EXPECT_TRUE(btree.Find(i, NULL, NULL)) << "i: " << i;
