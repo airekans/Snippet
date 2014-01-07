@@ -222,9 +222,30 @@ public:
         return false;
     }
 
-    void FindNextAndDelete(const KeyType key)
+    void GetMaxKeyItem(KeyType* key, ValueType* value) const
     {
+        if (IsLeave())
+        {
+            *key = m_elements[m_key_num - 1].first;
+            *value = m_elements[m_key_num - 1].second;
+        }
+        else
+        {
+            m_children[m_key_num]->GetMaxKeyItem(key, value);
+        }
+    }
 
+    void GetMinKeyItem(KeyType* key, ValueType* value) const
+    {
+        if (IsLeave())
+        {
+            *key = m_elements[0].first;
+            *value = m_elements[0].second;
+        }
+        else
+        {
+            m_children[0]->GetMinKeyItem(key, value);
+        }
     }
 
     void Delete(const unsigned idx)
@@ -234,6 +255,21 @@ public:
             m_elements[i - 1] = m_elements[i];
         }
         --m_key_num;
+    }
+
+    void MergeChildren(const unsigned idx)
+    {
+        BTreeNode* first_child = m_children[idx];
+        BTreeNode* second_child = m_children[idx + 1];
+        const unsigned first_old_key_num = first_child->m_key_num;
+        const unsigned second_old_key_num = second_child->m_key_num;
+
+        first_child->m_elements[first_old_key_num] = m_elements[idx];
+        for (unsigned i = 0; i < second_old_key_num; i++)
+        {
+            first_child->m_elements[first_old_key_num + 1 + i] =
+                    second_child->m_elements[i];
+        }
     }
 
     void SetKeyNum(const unsigned key_num)
@@ -246,7 +282,6 @@ public:
         m_children[i] = child;
     }
 
-private:
     void SetItem(const unsigned i, const KeyType key, const ValueType& value)
     {
         m_elements[i].first = key;
@@ -313,7 +348,7 @@ public:
 
     void Delete(const int key)
     {
-
+        // TODO: add implementation
     }
 
 private:
@@ -351,26 +386,41 @@ private:
     void Delete(BTreeNode& node, const int key)
     {
         unsigned key_idx;
-        bool is_key_found = false;
-        if ((is_key_found = node.Find(key, &key_idx)) && node.IsLeave())
+        bool is_key_found = node.Find(key, &key_idx);
+        if (node.IsLeave()) // case 1
         {
-            node.Delete(key_idx);
+            if (is_key_found)
+            {
+                node.Delete(key_idx);
+            }
             return;
         }
-        else if (is_key_found && !node.IsLeave())
+        else if (is_key_found && !node.IsLeave()) // case 2
         {
             const unsigned min_key_num = node.GetMaxKeyNum() / 2;
-            BTreeNode* child = node.GetChild(key_idx);
-            if (child->GetKeyNum() > min_key_num)
+            BTreeNode* cur_child = node.GetChild(key_idx);
+            if (cur_child->GetKeyNum() > min_key_num) // case 2a
             {
+                int prev_key = 0;
+                std::string prev_value;
+                cur_child->GetMaxKeyItem(&prev_key, &prev_value);
+                Delete(*cur_child, prev_key);
+                node.SetItem(key_idx, prev_key, prev_value);
                 return;
             }
 
-            child = node.GetChild(key_idx + 1);
-            if (child->GetKeyNum() > min_key_num)
+            BTreeNode* next_child = node.GetChild(key_idx + 1);
+            if (next_child->GetKeyNum() > min_key_num) // case 2b
             {
+                int next_key = 0;
+                std::string next_value;
+                next_child->GetMinKeyItem(&next_key, &next_value);
+                Delete(*next_child, next_key);
+                node.SetItem(key_idx, next_key, next_value);
                 return;
             }
+
+            // case 2c
 
         }
     }

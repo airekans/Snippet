@@ -34,7 +34,6 @@ TEST(BTree, TestInsert)
     ASSERT_EQ(static_cast<unsigned>(1), btree.GetSize());
 
     btree.Insert(2, "b");
-    btree.Dump();
 
     ASSERT_TRUE(btree.Find(1, NULL, NULL));
     ASSERT_TRUE(btree.Find(2, NULL, NULL));
