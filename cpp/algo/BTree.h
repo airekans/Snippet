@@ -211,14 +211,17 @@ public:
 
     bool Find(const KeyType key, unsigned* idx) const
     {
+        KeyType cur_key;
         for (unsigned i = 0; i < m_key_num; ++i)
         {
-            if (key == GetKey(i))
+            cur_key = GetKey(i);
+            if (key <= cur_key)
             {
                 *idx = i;
-                return true;
+                return key == cur_key;
             }
         }
+        *idx = m_key_num;
         return false;
     }
 
@@ -257,19 +260,89 @@ public:
         --m_key_num;
     }
 
-    void MergeChildren(const unsigned idx)
+    BTreeNode* MergeChildren(const unsigned idx)
     {
         BTreeNode* first_child = m_children[idx];
         BTreeNode* second_child = m_children[idx + 1];
         const unsigned first_old_key_num = first_child->m_key_num;
         const unsigned second_old_key_num = second_child->m_key_num;
 
+        // merge keys and values
         first_child->m_elements[first_old_key_num] = m_elements[idx];
-        for (unsigned i = 0; i < second_old_key_num; i++)
+        for (unsigned i = 0; i < second_old_key_num; ++i)
         {
             first_child->m_elements[first_old_key_num + 1 + i] =
                     second_child->m_elements[i];
         }
+
+        // merge the children
+        for (unsigned i = 0; i <= second_old_key_num; ++i)
+        {
+            first_child->SetChild(first_old_key_num + 1 + i,
+                                  second_child->m_children[i]);
+        }
+        first_child->m_key_num += second_old_key_num + 1;
+
+        // move the key backward in the parent.
+        for (unsigned i = idx; i < m_key_num - 1; ++i)
+        {
+            m_elements[i] = m_elements[i + 1];
+        }
+
+        // move the children backward in the parent
+        for (unsigned i = idx + 1; i < m_key_num; ++i)
+        {
+            m_children[i] = m_children[i + 1];
+        }
+        --m_key_num;
+        delete second_child;
+
+        return first_child;
+    }
+
+    void LeftShiftKey(const unsigned idx)
+    {
+        BTreeNode* left_child = m_children[idx];
+        BTreeNode* right_child = m_children[idx + 1];
+        const unsigned left_key_num = left_child->GetKeyNum();
+        const unsigned right_key_num = right_child->GetKeyNum();
+
+        left_child->m_elements[left_key_num] = m_elements[idx];
+        left_child->m_children[left_key_num + 1] = right_child->m_children[0];
+        ++(left_child->m_key_num);
+
+        m_elements[idx] = right_child->m_elements[0];
+
+        for (unsigned i = 0; i < right_key_num - 1; ++i)
+        {
+            right_child->m_elements[i] = right_child->m_elements[i + 1];
+            right_child->m_children[i] = right_child->m_children[i + 1];
+        }
+        right_child->m_children[right_key_num - 1] =
+                right_child->m_children[right_key_num];
+        --(right_child->m_key_num);
+    }
+
+    void RightShiftKey(const unsigned idx)
+    {
+        BTreeNode* left_child = m_children[idx];
+        BTreeNode* right_child = m_children[idx + 1];
+        const unsigned left_key_num = left_child->GetKeyNum();
+        const unsigned right_key_num = right_child->GetKeyNum();
+
+        for (unsigned i = right_key_num; i > 0; --i)
+        {
+            right_child->m_elements[i] = right_child->m_elements[i - 1];
+            right_child->m_children[i + 1] = right_child->m_children[i];
+        }
+        right_child->m_children[1] = right_child->m_children[0];
+        right_child->m_elements[0] = m_elements[idx];
+        right_child->m_children[0] = left_child->m_children[left_key_num];
+        ++(right_child->m_key_num);
+
+        m_elements[idx] = left_child->m_elements[left_key_num - 1];
+
+        --(left_child->m_key_num);
     }
 
     void SetKeyNum(const unsigned key_num)
@@ -421,7 +494,43 @@ private:
             }
 
             // case 2c
+            (void) node.MergeChildren(key_idx);
+            Delete(*cur_child, key);
+        }
+        else // case 3
+        {
+            BTreeNode* child = node.GetChild(key_idx);
+            const unsigned min_key_num = node.GetMaxKeyNum() / 2;
+            if (child->GetKeyNum() <= min_key_num)
+            {
+                BTreeNode* prev_child = NULL;
+                BTreeNode* next_child = NULL;
+                if (key_idx > 0)
+                {
+                    prev_child = node.GetChild(key_idx - 1);
+                }
+                if (key_idx < node.GetKeyNum())
+                {
+                    next_child = node.GetChild(key_idx + 1);
+                }
 
+                // case 3a
+                if (prev_child != NULL && prev_child->GetKeyNum() > min_key_num)
+                {
+                    node.RightShiftKey(key_idx - 1);
+                }
+                // case 3a
+                else if (next_child != NULL && next_child->GetKeyNum() > min_key_num)
+                {
+                    node.LeftShiftKey(key_idx);
+                }
+                else // case 3b
+                {
+                    child = node.MergeChildren(prev_child != NULL ?
+                                                 key_idx - 1: key_idx);
+                }
+            }
+            Delete(*child, key);
         }
     }
 
