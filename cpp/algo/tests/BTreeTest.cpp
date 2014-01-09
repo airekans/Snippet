@@ -152,3 +152,16 @@ TEST(BTree, TestFindWithEmptyTree)
     ASSERT_FALSE(btree.Find(2, NULL, NULL));
     ASSERT_FALSE(btree.Find(3, NULL, NULL));
 }
+
+TEST(BTree, TestDelete)
+{
+    BTree btree(5);
+
+    btree.Insert(1, "a");
+    ASSERT_EQ(static_cast<unsigned>(1), btree.GetSize());
+    ASSERT_TRUE(btree.Find(1, NULL, NULL));
+
+    btree.Delete(1);
+    ASSERT_EQ(static_cast<unsigned>(0), btree.GetSize());
+    ASSERT_FALSE(btree.Find(1, NULL, NULL));
+}

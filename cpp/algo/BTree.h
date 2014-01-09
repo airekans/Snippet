@@ -422,6 +422,36 @@ public:
     void Delete(const int key)
     {
         // TODO: add implementation
+        if (m_root->GetKeyNum() == 0)
+        {
+            return;
+        }
+        else if (m_root->GetKeyNum() == 1)
+        {
+            BTreeNode::DiskRead(m_root->GetChild(0));
+            BTreeNode::DiskRead(m_root->GetChild(1));
+
+            BTreeNode* first_child = m_root->GetChild(0);
+            BTreeNode* second_child = m_root->GetChild(1);
+            const unsigned min_key_num = m_root->GetMaxKeyNum() / 2;
+
+            if (first_child->GetKeyNum() == min_key_num &&
+                second_child->GetKeyNum() == min_key_num)
+            {
+                first_child = m_root->MergeChildren(0);
+                delete m_root;
+                m_root = first_child;
+                Delete(*m_root, key);
+            }
+            else
+            {
+                Delete(*m_root, key);
+            }
+        }
+        else
+        {
+            Delete(*m_root, key);
+        }
     }
 
 private:
