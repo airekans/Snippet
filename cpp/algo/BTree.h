@@ -295,6 +295,7 @@ public:
             m_children[i] = m_children[i + 1];
         }
         --m_key_num;
+        second_child->SetKeyNum(0); // we have to reset before deleting
         delete second_child;
 
         return first_child;
@@ -421,12 +422,11 @@ public:
 
     void Delete(const int key)
     {
-        // TODO: add implementation
         if (m_root->GetKeyNum() == 0)
         {
             return;
         }
-        else if (m_root->GetKeyNum() == 1)
+        else if (m_root->GetKeyNum() == 1 && !m_root->IsLeave())
         {
             BTreeNode::DiskRead(m_root->GetChild(0));
             BTreeNode::DiskRead(m_root->GetChild(1));
@@ -439,6 +439,7 @@ public:
                 second_child->GetKeyNum() == min_key_num)
             {
                 first_child = m_root->MergeChildren(0);
+                m_root->SetKeyNum(0);
                 delete m_root;
                 m_root = first_child;
                 Delete(*m_root, key);
