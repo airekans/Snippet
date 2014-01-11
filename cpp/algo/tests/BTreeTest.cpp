@@ -219,7 +219,6 @@ void DoTestDeleteElem(const unsigned times, const unsigned del_elem,
         }
     }
     ASSERT_EQ(static_cast<unsigned>(times), btree.GetSize());
-    btree.Dump();
 
     btree.Delete(del_elem);
 
