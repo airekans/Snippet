@@ -199,13 +199,24 @@ TEST(BTree, TestDeleteInLeaveSimple)
 }
 
 namespace {
-void DoTestDeleteElem(const unsigned times, const unsigned del_elem)
+void DoTestDeleteElem(const unsigned times, const unsigned del_elem,
+                      const bool is_reverse_insert = false)
 {
     BTree btree(5);
 
-    for (unsigned i = 0; i < times; ++i)
+    if (is_reverse_insert)
     {
-        btree.Insert(i, "a");
+        for (int i = static_cast<int>(times - 1); i >= 0; --i)
+        {
+            btree.Insert(static_cast<unsigned>(i), "a");
+        }
+    }
+    else
+    {
+        for (unsigned i = 0; i < times; ++i)
+        {
+            btree.Insert(i, "a");
+        }
     }
     ASSERT_EQ(static_cast<unsigned>(times), btree.GetSize());
     btree.Dump();
@@ -236,9 +247,20 @@ TEST_P(BTreeValueTest, TestDeleteFirst)
     DoTestDeleteElem(GetParam(), 0);
 }
 
+TEST_P(BTreeValueTest, TestDeleteFirstReversed)
+{
+    DoTestDeleteElem(GetParam(), 0, true);
+}
+
+
 TEST_P(BTreeValueTest, TestDeleteLast)
 {
     DoTestDeleteElem(GetParam(), GetParam() - 1);
+}
+
+TEST_P(BTreeValueTest, TestDeleteLastReversed)
+{
+    DoTestDeleteElem(GetParam(), GetParam() - 1, true);
 }
 
 TEST_P(BTreeValueTest, TestDeleteRandom)
@@ -246,6 +268,26 @@ TEST_P(BTreeValueTest, TestDeleteRandom)
     DoTestDeleteElem(GetParam(), rand() % GetParam());
 }
 
+TEST_P(BTreeValueTest, TestDeleteRandomReversed)
+{
+    DoTestDeleteElem(GetParam(), rand() % GetParam(), true);
+}
+
 INSTANTIATE_TEST_CASE_P(TestBTreeInsert,
                         BTreeValueTest,
                         ::testing::Range(3, 31));
+
+TEST(BTree, TestDeleteWithCase2a)
+{
+    DoTestDeleteElem(21, 3, true);
+}
+
+TEST(BTree, TestDeleteWithCase2b)
+{
+    DoTestDeleteElem(21, 17);
+}
+
+TEST(BTree, TestDeleteWithCase2c)
+{
+    DoTestDeleteElem(21, 2);
+}
