@@ -1,8 +1,3 @@
-/*
- * BTree.h
- *
- */
-
 #ifndef _BTREE_H_
 #define _BTREE_H_
 
@@ -258,12 +253,15 @@ public:
             m_elements[i - 1] = m_elements[i];
         }
         --m_key_num;
+        BTreeNode::DiskWrite(*this);
     }
 
     BTreeNode* MergeChildren(const unsigned idx)
     {
         BTreeNode* first_child = m_children[idx];
         BTreeNode* second_child = m_children[idx + 1];
+        BTreeNode::DiskRead(first_child);
+        BTreeNode::DiskRead(second_child);
         const unsigned first_old_key_num = first_child->m_key_num;
         const unsigned second_old_key_num = second_child->m_key_num;
 
@@ -282,6 +280,7 @@ public:
                                   second_child->m_children[i]);
         }
         first_child->m_key_num += second_old_key_num + 1;
+        BTreeNode::DiskWrite(*first_child);
 
         // move the key backward in the parent.
         for (unsigned i = idx; i < m_key_num - 1; ++i)
@@ -295,6 +294,8 @@ public:
             m_children[i] = m_children[i + 1];
         }
         --m_key_num;
+        BTreeNode::DiskWrite(*this);
+
         second_child->SetKeyNum(0); // we have to reset before deleting
         delete second_child;
 
@@ -305,14 +306,18 @@ public:
     {
         BTreeNode* left_child = m_children[idx];
         BTreeNode* right_child = m_children[idx + 1];
+        BTreeNode::DiskRead(left_child);
+        BTreeNode::DiskRead(right_child);
         const unsigned left_key_num = left_child->GetKeyNum();
         const unsigned right_key_num = right_child->GetKeyNum();
 
         left_child->m_elements[left_key_num] = m_elements[idx];
         left_child->m_children[left_key_num + 1] = right_child->m_children[0];
         ++(left_child->m_key_num);
+        BTreeNode::DiskWrite(*left_child);
 
         m_elements[idx] = right_child->m_elements[0];
+        BTreeNode::DiskWrite(*this);
 
         for (unsigned i = 0; i < right_key_num - 1; ++i)
         {
@@ -322,12 +327,15 @@ public:
         right_child->m_children[right_key_num - 1] =
                 right_child->m_children[right_key_num];
         --(right_child->m_key_num);
+        BTreeNode::DiskWrite(*right_child);
     }
 
     void RightShiftKey(const unsigned idx)
     {
         BTreeNode* left_child = m_children[idx];
         BTreeNode* right_child = m_children[idx + 1];
+        BTreeNode::DiskRead(left_child);
+        BTreeNode::DiskRead(right_child);
         const unsigned left_key_num = left_child->GetKeyNum();
         const unsigned right_key_num = right_child->GetKeyNum();
 
@@ -340,10 +348,13 @@ public:
         right_child->m_elements[0] = m_elements[idx];
         right_child->m_children[0] = left_child->m_children[left_key_num];
         ++(right_child->m_key_num);
+        BTreeNode::DiskWrite(*right_child);
 
         m_elements[idx] = left_child->m_elements[left_key_num - 1];
+        BTreeNode::DiskWrite(*this);
 
         --(left_child->m_key_num);
+        BTreeNode::DiskWrite(*left_child);
     }
 
     void SetKeyNum(const unsigned key_num)
@@ -503,6 +514,7 @@ private:
         {
             const unsigned min_key_num = node.GetMaxKeyNum() / 2;
             BTreeNode* cur_child = node.GetChild(key_idx);
+            BTreeNode::DiskRead(cur_child);
             if (cur_child->GetKeyNum() > min_key_num) // case 2a
             {
                 int prev_key = 0;
@@ -514,6 +526,7 @@ private:
             }
 
             BTreeNode* next_child = node.GetChild(key_idx + 1);
+            BTreeNode::DiskRead(next_child);
             if (next_child->GetKeyNum() > min_key_num) // case 2b
             {
                 int next_key = 0;
@@ -531,6 +544,7 @@ private:
         else // case 3
         {
             BTreeNode* child = node.GetChild(key_idx);
+            BTreeNode::DiskRead(child);
             const unsigned min_key_num = node.GetMaxKeyNum() / 2;
             if (child->GetKeyNum() <= min_key_num)
             {
@@ -539,10 +553,12 @@ private:
                 if (key_idx > 0)
                 {
                     prev_child = node.GetChild(key_idx - 1);
+                    BTreeNode::DiskRead(prev_child);
                 }
                 if (key_idx < node.GetKeyNum())
                 {
                     next_child = node.GetChild(key_idx + 1);
+                    BTreeNode::DiskRead(next_child);
                 }
 
                 // case 3a
