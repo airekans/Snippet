@@ -10,6 +10,28 @@
 namespace snippet {
 namespace algo {
 
+namespace detail {
+
+template<typename Key, typename Value>
+struct HashMapNode
+{
+    HashMapNode(typename ParamTrait<const Key>::DeclType k,
+         typename ParamTrait<const Value>::DeclType v,
+         HashMapNode* n)
+    : key(k), value(v), next(n)
+    {}
+
+    HashMapNode(typename ParamTrait<const Key>::DeclType k, HashMapNode* n)
+    : key(k), value(), next(n)
+    {}
+
+    const Key key;
+    Value value;
+    HashMapNode* next;
+};
+
+}  // namespace detail
+
 unsigned int Hash(unsigned int key)
 {
     return key;
@@ -20,40 +42,53 @@ unsigned int Hash(int key)
     return static_cast<unsigned int>(key);
 }
 
+// This hashing implementation is used by Python
+unsigned int Hash(const ::std::string& str)
+{
+    const unsigned char* p = reinterpret_cast<const unsigned char*>(str.c_str());
+    unsigned int result = (*p) << 7;
+    const ::std::size_t str_size = str.size();
+    for (::std::size_t i = 0; i < str_size; ++i)
+    {
+        result = (1000003 * result) ^ *p++;
+    }
+    result ^= str_size;
+    return result;
+}
+
 template<typename Key, typename Value>
 class HashMap
 {
-    struct Node
+    typedef detail::HashMapNode<Key, Value> Node;
+
+    class IteratorBase
     {
-        Node(typename ParamTrait<const Key>::DeclType k,
-             typename ParamTrait<Value>::DeclType v,
-             Node* n)
-        : key(k), value(v), next(n)
-        {}
+        friend bool operator== (const IteratorBase& lhs, const IteratorBase& rhs)
+        {
+            return lhs.IsEqual(rhs);
+        }
 
-        Node(typename ParamTrait<const Key>::DeclType k, Node* n)
-        : key(k), value(), next(n)
-        {}
+        friend bool operator!= (const IteratorBase& lhs, const IteratorBase& rhs)
+        {
+            return !lhs.IsEqual(rhs);
+        }
 
-        const Key key;
-        Value value;
-        Node* next;
-    };
-
-public:
-
-    class Iterator
-    {
     public:
-        Iterator(Node** current_bucket, Node* current_node)
+        // current_node must in the current_bucket.
+        IteratorBase(Node** current_bucket, Node* current_node)
         : m_current_bucket(current_bucket), m_current_node(current_node)
-        {}
+        {
+            if (m_current_node == NULL)
+            {
+                this->IncrementBucket();
+            }
+        }
 
-        void operator++()
+        void Next()
         {
             if (m_current_node->next == NULL)
             {
-                m_current_node = *(++m_current_bucket);
+                this->IncrementBucket();
             }
             else
             {
@@ -61,41 +96,102 @@ public:
             }
         }
 
-        Value* operator->()
+    protected:
+        void IncrementBucket()
         {
-            return &(m_current_node->value);
+            while ((m_current_node = *(++m_current_bucket)) == NULL) ;
         }
 
-        Value& operator*()
+        bool IsEqual(const IteratorBase& other) const
         {
-            return m_current_node->value;
+            return m_current_bucket == other.m_current_bucket &&
+                    m_current_node == other.m_current_node;
         }
 
-    private:
         Node** m_current_bucket;
         Node* m_current_node;
+    };
+
+public:
+
+    class Iterator : public IteratorBase
+    {
+    public:
+        // current_node must in the current_bucket.
+        Iterator(Node** current_bucket, Node* current_node)
+        : IteratorBase(current_bucket, current_node)
+        {}
+
+        Iterator& operator++()
+        {
+            this->Next();
+            return *this;
+        }
+
+        typename ParamTrait<const Key>::DeclType GetKey() const
+        {
+            return this->m_current_node->key;
+        }
+
+        Value& GetValue()
+        {
+            return this->m_current_node->value;
+        }
+    };
+
+    class ConstIterator : public IteratorBase
+    {
+    public:
+        // current_node must in the current_bucket.
+        ConstIterator(Node** current_bucket, Node* current_node)
+        : IteratorBase(current_bucket, current_node)
+        {}
+
+        // We can convert a Iterator to ConstIterator
+        ConstIterator(const Iterator& it)
+        : IteratorBase(it)
+        {}
+
+        ConstIterator& operator++()
+        {
+            this->Next();
+            return *this;
+        }
+
+        typename ParamTrait<const Key>::DeclType GetKey() const
+        {
+            return this->m_current_node->key;
+        }
+
+        typename ParamTrait<const Value>::DeclType GetValue() const
+        {
+            return this->m_current_node->value;
+        }
     };
 
     typedef Key KeyType;
     typedef Value ValueType;
     typedef Iterator iterator;
+    typedef ConstIterator const_iterator;
 
     HashMap()
-    : m_buckets(new Node*[17])
-    , m_bucket_count(17)
+    : m_buckets(new Node*[9977 + 1])
+    , m_bucket_count(9977)
     , m_node_count(0)
     {
         memset(m_buckets, 0, sizeof(Node*) * m_bucket_count);
+        m_buckets[m_bucket_count] = reinterpret_cast<Node*>(0x0123);
     }
 
     // For copy std::map/unordered_map
     template<typename Container>
     explicit HashMap(const Container& c)
-    : m_buckets(new Node*[17])
-    , m_bucket_count(17)
+    : m_buckets(new Node*[9977+ 1])
+    , m_bucket_count(9977)
     , m_node_count(0)
     {
         memset(m_buckets, 0, sizeof(Node*) * m_bucket_count);
+        m_buckets[m_bucket_count] = reinterpret_cast<Node*>(0x0123);
         // TODO: check the size of c and choose next prime to the size
         for (typename Container::const_iterator it = c.begin();
              it != c.end(); ++it)
@@ -105,12 +201,32 @@ public:
     }
 
     HashMap(const HashMap& m)
-    : m_buckets(new Node*[m.m_bucket_count])
+    : m_buckets(new Node*[m.m_bucket_count + 1])
     , m_bucket_count(m.m_bucket_count)
     , m_node_count(0)
     {
-        // TODO: implement this
-        std::cerr << "this?" << std::endl;
+        for (::std::size_t i = 0; i < m_bucket_count; ++i)
+        {
+            if (m.m_buckets[i] == NULL)
+            {
+                m_buckets[i] = NULL;
+            }
+            else
+            {
+                Node* node = m.m_buckets[i];
+                Node** prev_node = m_buckets + i;
+                while (node != NULL)
+                {
+                    // TODO: use allocator
+                    Node* new_node = new Node(node->key, node->value, NULL);
+                    *prev_node = new_node;
+                    prev_node = &(new_node->next);
+                    node = node->next;
+                    ++m_node_count;
+                }
+            }
+        }
+        m_buckets[m_bucket_count] = reinterpret_cast<Node*>(0x0123);
     }
 
     // Do NOT derive from this class
@@ -135,7 +251,7 @@ public:
     }
 
     bool Insert(typename ParamTrait<const Key>::DeclType key,
-                typename ParamTrait<Value>::DeclType value)
+                typename ParamTrait<const Value>::DeclType value)
     {
         // TODO: rehash
         const unsigned int hash_code = Hash(key);
@@ -210,11 +326,37 @@ public:
         return false;
     }
 
+    void PrintDebugString() const
+    {
+        for (::std::size_t i = 0; i < size(); ++i)
+        {
+            ::std::cout << i << "    : ";
+            for (Node* node = m_buckets[i]; node != NULL; node = node->next)
+            {
+                ::std::cout << "(" << node->key << "," << node->value << ") ";
+            }
+            ::std::cout << ::std::endl;
+        }
+    }
+
     ::std::size_t size() const { return m_node_count; }
 
     Value& operator[] (typename ParamTrait<const Key>::DeclType key)
     {
         return FindAndInsertIfNotPresent(key);
+    }
+
+    iterator begin() { return iterator(m_buckets, *m_buckets); }
+    const_iterator begin() const { return const_iterator(m_buckets, *m_buckets); }
+
+    iterator end()
+    {
+        return iterator(m_buckets + m_bucket_count, m_buckets[m_bucket_count]);
+    }
+
+    const_iterator end() const
+    {
+        return const_iterator(m_buckets + m_bucket_count, m_buckets[m_bucket_count]);
     }
 
 private:
@@ -230,6 +372,7 @@ private:
         }
         return NULL;
     }
+
 
     Node** m_buckets;
     ::std::size_t m_bucket_count;
