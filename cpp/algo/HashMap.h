@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iostream>
 #include <algorithm>
+#include <memory>
 
 namespace snippet {
 namespace algo {
@@ -213,10 +214,13 @@ public:
 template<typename Key, typename Value,
          typename HashPolicy = DefaultHashMapHashPolicy<Key>,
          typename RehashPolicy = DefaultHashMapRehashPolicy,
+         typename Allocator = ::std::allocator<Key>,
          bool IsCacheHash = true>
 class HashMap : public RehashBase<Key, Value, HashPolicy, IsCacheHash>
 {
     typedef detail::HashMapNode<Key, Value, IsCacheHash> Node;
+    typedef typename Allocator::template rebind<Node>::other NodeAllocator;
+    typedef typename Allocator::template rebind<Node*>::other BucketAllocator;
 
     class IteratorBase
     {
@@ -334,14 +338,17 @@ public:
     typedef HashPolicy hash_policy;
     typedef RehashPolicy rehash_policy;
 
+
     HashMap(unsigned int size_hint = 0,
             const HashPolicy& hash_policy = HashPolicy(),
-            const RehashPolicy& rehash_policy = RehashPolicy())
-    : m_bucket_count(rehash_policy.NextBucketCount(size_hint))
-    , m_buckets(new Node*[m_bucket_count + 1])
+            const RehashPolicy& rehash_policy = RehashPolicy(),
+            const NodeAllocator& node_alloc = NodeAllocator(),
+            const BucketAllocator& bucket_alloc = BucketAllocator())
+    : m_hash_impl(node_alloc, hash_policy)
+    , m_rehash_impl(bucket_alloc, rehash_policy)
+    , m_bucket_count(rehash_policy.NextBucketCount(size_hint))
+    , m_buckets(m_rehash_impl.allocate(m_bucket_count + 1))
     , m_node_count(0)
-    , m_hash_policy(hash_policy)
-    , m_rehash_policy(rehash_policy)
     {
         memset(m_buckets, 0, sizeof(Node*) * m_bucket_count);
         m_buckets[m_bucket_count] = reinterpret_cast<Node*>(0x0123);
@@ -351,12 +358,14 @@ public:
     template<typename Container>
     HashMap(const Container& c,
             const HashPolicy& hash_policy = HashPolicy(),
-            const RehashPolicy& rehash_policy = RehashPolicy())
-    : m_bucket_count(rehash_policy.BucketCountForElements(c.size()))
-    , m_buckets(new Node*[m_bucket_count + 1])
+            const RehashPolicy& rehash_policy = RehashPolicy(),
+            const NodeAllocator& node_alloc = NodeAllocator(),
+            const BucketAllocator& bucket_alloc = BucketAllocator())
+    : m_hash_impl(node_alloc, hash_policy)
+    , m_rehash_impl(bucket_alloc, rehash_policy)
+    , m_bucket_count(m_rehash_impl.rehash_policy.BucketCountForElements(c.size()))
+    , m_buckets(m_rehash_impl.allocate(m_bucket_count + 1))
     , m_node_count(0)
-    , m_hash_policy(hash_policy)
-    , m_rehash_policy(rehash_policy)
     {
         memset(m_buckets, 0, sizeof(Node*) * m_bucket_count);
         m_buckets[m_bucket_count] = reinterpret_cast<Node*>(0x0123);
@@ -368,11 +377,11 @@ public:
     }
 
     HashMap(const HashMap& m)
-    : m_bucket_count(m.m_bucket_count)
-    , m_buckets(new Node*[m.m_bucket_count + 1])
+    : m_hash_impl(m.m_hash_impl)
+    , m_rehash_impl(m.m_rehash_impl)
+    , m_bucket_count(m.m_bucket_count)
+    , m_buckets(m_rehash_impl.allocate(m.m_bucket_count + 1))
     , m_node_count(0)
-    , m_hash_policy(m.m_hash_policy)
-    , m_rehash_policy(m.m_rehash_policy)
     {
         for (::std::size_t i = 0; i < m_bucket_count; ++i)
         {
@@ -386,8 +395,8 @@ public:
                 Node** prev_node = m_buckets + i;
                 while (node != NULL)
                 {
-                    // TODO: use allocator
-                    Node* new_node = new Node(*node);
+                    Node* new_node = m_hash_impl.allocate(1);
+                    (void) new (new_node) Node(*node);
                     new_node->next = NULL;
                     *prev_node = new_node;
                     prev_node = &(new_node->next);
@@ -406,42 +415,42 @@ public:
         Node* next = NULL;
         for (std::size_t i = 0; i < m_bucket_count; ++i)
         {
-            // TODO: use allocator
             node = m_buckets[i];
             while (node != NULL)
             {
                 next = node->next;
-                delete node;
+                node->~Node();
+                m_hash_impl.deallocate(node, 1);
                 node = next;
             }
             m_buckets[i] = NULL;
         }
 
-        delete [] m_buckets;
+        m_rehash_impl.deallocate(m_buckets, m_bucket_count + 1);
     }
 
     bool Insert(typename ParamTrait<const Key>::DeclType key,
                 typename ParamTrait<const Value>::DeclType value)
     {
         // TODO: rehash
-        const unsigned int hash_code = m_hash_policy.DoHash(key);
+        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
         ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (FindInBucket(m_buckets + bucket_index, key) != NULL)
         {
             return false;
         }
 
-        if (m_rehash_policy.IsRehash(m_bucket_count, m_node_count + 1))
+        if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count + 1))
         {
             unsigned int new_bucket_count =
-                    m_rehash_policy.BucketCountForElements(m_node_count + 1);
+                    m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count + 1);
             Rehash(new_bucket_count);
             bucket_index = hash_code % m_bucket_count;
         }
 
-        // TODO: use allocator
         Node** bucket = m_buckets + bucket_index;
-        Node* new_node = new Node(key, value, *bucket, hash_code);
+        Node* new_node = m_hash_impl.allocate(1);
+        (void) new (new_node) Node(key, value, *bucket, hash_code);
         *bucket = new_node;
         ++m_node_count;
         return true;
@@ -449,7 +458,7 @@ public:
 
     bool Find(typename ParamTrait<const Key>::DeclType key, Value& value) const
     {
-        const unsigned int hash_code = m_hash_policy.DoHash(key);
+        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
         const ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (Node* node = FindInBucket(m_buckets + bucket_index, key))
         {
@@ -464,24 +473,24 @@ public:
 
     Value& FindAndInsertIfNotPresent(typename ParamTrait<const Key>::DeclType key)
     {
-        const unsigned int hash_code = m_hash_policy.DoHash(key);
+        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
         ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (Node* node = FindInBucket(m_buckets + bucket_index, key))
         {
             return node->value;
         }
 
-        if (m_rehash_policy.IsRehash(m_bucket_count, m_node_count + 1))
+        if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count + 1))
         {
             unsigned int new_bucket_count =
-                    m_rehash_policy.BucketCountForElements(m_node_count + 1);
+                    m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count + 1);
             Rehash(new_bucket_count);
             bucket_index = hash_code % m_bucket_count;
         }
 
-        // TODO: use allocator
         Node** bucket = m_buckets + bucket_index;
-        Node* new_node = new Node(key, *bucket, hash_code);
+        Node* new_node = m_hash_impl.allocate(1);
+        (void) new (new_node) Node(key, *bucket, hash_code);
         *bucket = new_node;
         ++m_node_count;
         return new_node->value;
@@ -489,7 +498,7 @@ public:
 
     bool Delete(typename ParamTrait<const Key>::DeclType key)
     {
-        const unsigned int hash_code = m_hash_policy.DoHash(key);
+        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
         const ::std::size_t bucket_index = hash_code % m_bucket_count;
         Node** prev_node = m_buckets + bucket_index;
         Node* cur_node = *prev_node;
@@ -499,8 +508,8 @@ public:
             if (cur_node->key == key)
             {
                 *prev_node = cur_node->next;
-                // TODO: use allocator
-                delete cur_node;
+                cur_node->~Node();
+                m_hash_impl.deallocate(cur_node, 1);
                 --m_node_count;
                 return true;
             }
@@ -561,26 +570,46 @@ private:
 
     void Rehash(unsigned int new_bucket_count)
     {
-        // TODO: use allocator
-        Node** new_buckets = new Node*[new_bucket_count + 1];
+        Node** new_buckets = m_rehash_impl.allocate(new_bucket_count + 1);
         memset(new_buckets, 0, sizeof(Node*) * new_bucket_count);
         new_buckets[new_bucket_count] = reinterpret_cast<Node*>(0x0123);
 
         this->DoRehash(m_buckets, m_bucket_count, new_buckets, new_bucket_count,
-                       m_hash_policy);
+                       m_hash_impl.hash_policy);
 
-        delete [] m_buckets;
+        m_rehash_impl.deallocate(m_buckets, m_bucket_count + 1);
         m_buckets = new_buckets;
         m_bucket_count = new_bucket_count;
     }
 
 
+    struct HashPolicyAndNodeAllocator : public NodeAllocator
+    {
+        HashPolicyAndNodeAllocator(const NodeAllocator& alloc,
+                                   const HashPolicy& policy)
+        : NodeAllocator(alloc), hash_policy(policy)
+        {}
+
+        HashPolicy hash_policy;
+    };
+
+    HashPolicyAndNodeAllocator m_hash_impl;
+
+    struct RehashPolicyAndBucketAllocator : public BucketAllocator
+    {
+        RehashPolicyAndBucketAllocator(const BucketAllocator& alloc,
+                                       const RehashPolicy& policy)
+        : BucketAllocator(alloc), rehash_policy(policy)
+        {}
+
+        RehashPolicy rehash_policy;
+    };
+
+    RehashPolicyAndBucketAllocator m_rehash_impl;
+
     ::std::size_t m_bucket_count;
     Node** m_buckets;
     ::std::size_t m_node_count;
-
-    HashPolicy m_hash_policy;
-    RehashPolicy m_rehash_policy;
 };
 
 }  // namespace algo
