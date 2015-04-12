@@ -87,6 +87,37 @@ const T HashTablePrimeList<T>::s_prime_list[PRIME_NUM] =
         805306457ul,  1610612741ul, 3221225473ul, 4294967291ul
 };
 
+
+template<typename T, unsigned int TypeSize>
+struct HashDouble;
+
+template<typename T>
+struct HashDouble<T, 4>
+{
+    static unsigned int Hash(T* num)
+    {
+        return *reinterpret_cast<unsigned int*>(num);
+    }
+};
+
+template<typename T>
+struct HashDouble<T, 8>
+{
+    static unsigned int Hash(T* num)
+    {
+        // because the following condition can be determined in
+        // compile time, compiler will eliminate the dead path.
+        if (sizeof(unsigned int) == 4)
+        {
+            return *reinterpret_cast<unsigned int*>(num);
+        }
+        else // sizeof(unsigned int) == 8
+        {
+            return *reinterpret_cast<unsigned int*>(num);
+        }
+    }
+};
+
 }  // namespace detail
 
 unsigned int Hash(unsigned int key)
@@ -113,6 +144,7 @@ unsigned int Hash(const ::std::string& str)
     return result;
 }
 
+
 template<typename Key>
 struct DefaultHashMapHashPolicy
 {
@@ -125,6 +157,8 @@ struct DefaultHashMapHashPolicy
 class DefaultHashMapRehashPolicy
 {
 public:
+    typedef detail::HashTablePrimeList<unsigned int> PrimeList;
+
     DefaultHashMapRehashPolicy(unsigned int load_factor = 2)
     : m_load_factor(load_factor)
     {}
@@ -136,7 +170,7 @@ public:
 
     unsigned int NextBucketCount(::std::size_t hint) const
     {
-        const unsigned int* first = detail::HashTablePrimeList<unsigned int>::GetPrimeList();
+        const unsigned int* first = PrimeList::GetPrimeList();
         const unsigned int* last = first + detail::PRIME_NUM;
         const unsigned int* pos = ::std::lower_bound(first, last, hint);
         return pos == last? *(last - 1) : *pos;
@@ -144,8 +178,8 @@ public:
 
     unsigned int BucketCountForElements(::std::size_t elements) const
     {
-        unsigned int min_bucket = (elements + m_load_factor - 1) / m_load_factor;
-        const unsigned int* first = detail::HashTablePrimeList<unsigned int>::GetPrimeList();
+        unsigned int min_bucket = elements / m_load_factor + 1;
+        const unsigned int* first = PrimeList::GetPrimeList();
         const unsigned int* last = first + detail::PRIME_NUM;
         const unsigned int* pos = ::std::lower_bound(first, last, min_bucket);
         return pos == last? *(last - 1) : *pos;
@@ -154,6 +188,18 @@ public:
 private:
     const unsigned int m_load_factor;
 };
+
+
+template<typename Key>
+struct DefaultKeyEqual
+{
+    static bool Equal(typename ParamTrait<const Key>::DeclType lhs,
+                      typename ParamTrait<const Key>::DeclType rhs)
+    {
+        return lhs == rhs;
+    }
+};
+
 
 template<typename Key, typename Value, typename HashPolicy,
          bool IsCacheHash>
@@ -211,17 +257,20 @@ public:
     }
 };
 
+
+// KeyEqual and NodeAllocator should not define Equal method at the same time.
 template<typename Key, typename Value,
+         typename KeyEqual = DefaultKeyEqual<Key>,
          typename HashPolicy = DefaultHashMapHashPolicy<Key>,
          typename RehashPolicy = DefaultHashMapRehashPolicy,
          typename Allocator = ::std::allocator<Key>,
          bool IsCacheHash = true>
 class HashMap : public RehashBase<Key, Value, HashPolicy, IsCacheHash>
 {
+public:
     typedef detail::HashMapNode<Key, Value, IsCacheHash> Node;
-    typedef typename Allocator::template rebind<Node>::other NodeAllocator;
-    typedef typename Allocator::template rebind<Node*>::other BucketAllocator;
 
+private:
     class IteratorBase
     {
         friend bool operator== (const IteratorBase& lhs, const IteratorBase& rhs)
@@ -334,17 +383,21 @@ public:
     typedef Value ValueType;
     typedef Iterator iterator;
     typedef ConstIterator const_iterator;
+    typedef typename Allocator::template rebind<Node>::other NodeAllocator;
+    typedef typename Allocator::template rebind<Node*>::other BucketAllocator;
 
+    typedef KeyEqual key_equal;
     typedef HashPolicy hash_policy;
     typedef RehashPolicy rehash_policy;
 
 
     HashMap(unsigned int size_hint = 0,
+            const KeyEqual& key_equal = KeyEqual(),
             const HashPolicy& hash_policy = HashPolicy(),
             const RehashPolicy& rehash_policy = RehashPolicy(),
             const NodeAllocator& node_alloc = NodeAllocator(),
             const BucketAllocator& bucket_alloc = BucketAllocator())
-    : m_hash_impl(node_alloc, hash_policy)
+    : m_hash_impl(node_alloc, key_equal, hash_policy)
     , m_rehash_impl(bucket_alloc, rehash_policy)
     , m_bucket_count(rehash_policy.NextBucketCount(size_hint))
     , m_buckets(m_rehash_impl.allocate(m_bucket_count + 1))
@@ -357,11 +410,12 @@ public:
     // For copy std::map/unordered_map
     template<typename Container>
     HashMap(const Container& c,
+            const KeyEqual& key_equal = KeyEqual(),
             const HashPolicy& hash_policy = HashPolicy(),
             const RehashPolicy& rehash_policy = RehashPolicy(),
             const NodeAllocator& node_alloc = NodeAllocator(),
             const BucketAllocator& bucket_alloc = BucketAllocator())
-    : m_hash_impl(node_alloc, hash_policy)
+    : m_hash_impl(node_alloc, key_equal, hash_policy)
     , m_rehash_impl(bucket_alloc, rehash_policy)
     , m_bucket_count(m_rehash_impl.rehash_policy.BucketCountForElements(c.size()))
     , m_buckets(m_rehash_impl.allocate(m_bucket_count + 1))
@@ -411,28 +465,13 @@ public:
     // Do NOT derive from this class
     ~HashMap()
     {
-        Node* node = NULL;
-        Node* next = NULL;
-        for (std::size_t i = 0; i < m_bucket_count; ++i)
-        {
-            node = m_buckets[i];
-            while (node != NULL)
-            {
-                next = node->next;
-                node->~Node();
-                m_hash_impl.deallocate(node, 1);
-                node = next;
-            }
-            m_buckets[i] = NULL;
-        }
-
+        Clear();
         m_rehash_impl.deallocate(m_buckets, m_bucket_count + 1);
     }
 
     bool Insert(typename ParamTrait<const Key>::DeclType key,
                 typename ParamTrait<const Value>::DeclType value)
     {
-        // TODO: rehash
         const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
         ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (FindInBucket(m_buckets + bucket_index, key) != NULL)
@@ -444,7 +483,7 @@ public:
         {
             unsigned int new_bucket_count =
                     m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count + 1);
-            Rehash(new_bucket_count);
+            RehashImpl(new_bucket_count);
             bucket_index = hash_code % m_bucket_count;
         }
 
@@ -484,7 +523,7 @@ public:
         {
             unsigned int new_bucket_count =
                     m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count + 1);
-            Rehash(new_bucket_count);
+            RehashImpl(new_bucket_count);
             bucket_index = hash_code % m_bucket_count;
         }
 
@@ -504,13 +543,22 @@ public:
         Node* cur_node = *prev_node;
         while (cur_node != NULL)
         {
-            // TODO: Use Equal
-            if (cur_node->key == key)
+            if (m_hash_impl.Equal(cur_node->key, key))
             {
                 *prev_node = cur_node->next;
                 cur_node->~Node();
                 m_hash_impl.deallocate(cur_node, 1);
                 --m_node_count;
+
+                // Try to rehash
+                // But the default rehash policy will not rehash after deleting
+                if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count))
+                {
+                    unsigned int new_bucket_count =
+                            m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count);
+                    RehashImpl(new_bucket_count);
+                }
+
                 return true;
             }
 
@@ -520,6 +568,54 @@ public:
 
         return false;
     }
+
+    void Clear()
+    {
+        Node* node = NULL;
+        Node* next = NULL;
+        for (std::size_t i = 0; i < m_bucket_count; ++i)
+        {
+            node = m_buckets[i];
+            while (node != NULL)
+            {
+                next = node->next;
+                node->~Node();
+                m_hash_impl.deallocate(node, 1);
+                node = next;
+            }
+            m_buckets[i] = NULL;
+        }
+
+        m_node_count = 0;
+        if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count))
+        {
+            unsigned int new_bucket_count =
+                    m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count);
+            RehashImpl(new_bucket_count);
+        }
+    }
+
+    // if hint is 0, then try to rehash to fit the current node_count;
+    // returns the new bucket_count
+    ::std::size_t Rehash(unsigned int size_hint = 0)
+    {
+        if (size_hint == 0)
+        {
+            size_hint = m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count);
+        }
+        else
+        {
+            size_hint = m_rehash_impl.rehash_policy.NextBucketCount(size_hint);
+        }
+
+        if (size_hint != m_bucket_count)
+        {
+            RehashImpl(size_hint);
+        }
+        return m_bucket_count;
+    }
+
+    ::std::size_t GetBucketCount() const { return m_bucket_count; }
 
     void PrintDebugString() const
     {
@@ -534,7 +630,15 @@ public:
         }
     }
 
+    NodeAllocator& GetNodeAllocator() { return m_hash_impl; }
+    const NodeAllocator& GetNodeAllocator() const { return m_hash_impl; }
+    BucketAllocator& GetBucketAllocator() { return m_rehash_impl; }
+    const BucketAllocator& GetBucketAllocator() const { return m_rehash_impl; }
+
+    // STL compatible methods
     ::std::size_t size() const { return m_node_count; }
+    bool empty() const { return m_node_count == 0; }
+    void clear() { Clear(); }
 
     Value& operator[] (typename ParamTrait<const Key>::DeclType key)
     {
@@ -559,8 +663,7 @@ private:
     {
         for (Node* node = *bucket; node != NULL; node = node->next)
         {
-            // TODO: use Equal
-            if (key == node->key)
+            if (m_hash_impl.Equal(key, node->key))
             {
                 return node;
             }
@@ -568,7 +671,7 @@ private:
         return NULL;
     }
 
-    void Rehash(unsigned int new_bucket_count)
+    void RehashImpl(unsigned int new_bucket_count)
     {
         Node** new_buckets = m_rehash_impl.allocate(new_bucket_count + 1);
         memset(new_buckets, 0, sizeof(Node*) * new_bucket_count);
@@ -583,11 +686,12 @@ private:
     }
 
 
-    struct HashPolicyAndNodeAllocator : public NodeAllocator
+    struct HashPolicyAndNodeAllocator : public NodeAllocator, public KeyEqual
     {
         HashPolicyAndNodeAllocator(const NodeAllocator& alloc,
+                                   const KeyEqual& key_equal,
                                    const HashPolicy& policy)
-        : NodeAllocator(alloc), hash_policy(policy)
+        : NodeAllocator(alloc), KeyEqual(key_equal), hash_policy(policy)
         {}
 
         HashPolicy hash_policy;
