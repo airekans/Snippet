@@ -19,12 +19,12 @@ struct HashMapNode
 {
     HashMapNode(typename ParamTrait<const Key>::DeclType k,
          typename ParamTrait<const Value>::DeclType v,
-         HashMapNode* n, unsigned int h)
+         HashMapNode* n, std::size_t h)
     : key(k), value(v), next(n), cached_hash(h)
     {}
 
     HashMapNode(typename ParamTrait<const Key>::DeclType k, HashMapNode* n,
-                unsigned int h)
+                std::size_t h)
     : key(k), value(), next(n), cached_hash(h)
     {}
 
@@ -36,7 +36,7 @@ struct HashMapNode
     const Key key;
     Value value;
     HashMapNode* next;
-    unsigned int cached_hash;
+    std::size_t cached_hash;
 };
 
 // not cache hash code
@@ -45,12 +45,12 @@ struct HashMapNode<Key, Value, false>
 {
     HashMapNode(typename ParamTrait<const Key>::DeclType k,
          typename ParamTrait<const Value>::DeclType v,
-         HashMapNode* n, unsigned int)
+         HashMapNode* n, std::size_t)
     : key(k), value(v), next(n)
     {}
 
     HashMapNode(typename ParamTrait<const Key>::DeclType k, HashMapNode* n,
-                unsigned int)
+                std::size_t)
     : key(k), value(), next(n)
     {}
 
@@ -94,47 +94,69 @@ struct HashDouble;
 template<typename T>
 struct HashDouble<T, 4>
 {
-    static unsigned int Hash(T* num)
+    static std::size_t Hash(T* num)
     {
-        return *reinterpret_cast<unsigned int*>(num);
+        return *reinterpret_cast<std::size_t*>(num);
     }
 };
 
 template<typename T>
 struct HashDouble<T, 8>
 {
-    static unsigned int Hash(T* num)
+    static std::size_t Hash(T* num)
     {
         // because the following condition can be determined in
         // compile time, compiler will eliminate the dead path.
-        if (sizeof(unsigned int) == 4)
+        if (sizeof(std::size_t) == 4)
         {
-            return *reinterpret_cast<unsigned int*>(num);
+            const unsigned char* p = reinterpret_cast<const unsigned char*>(num);
+            std::size_t result = (*p) << 7;
+            for (::std::size_t i = 0; i < 8; ++i)
+            {
+                result = (1000003 * result) ^ *p++;
+            }
+            result ^= 8;
+            return result;
         }
-        else // sizeof(unsigned int) == 8
+        else // sizeof(std::size_t) == 8
         {
-            return *reinterpret_cast<unsigned int*>(num);
+            return *reinterpret_cast<std::size_t*>(num);
         }
     }
 };
 
 }  // namespace detail
 
-unsigned int Hash(unsigned int key)
+std::size_t Hash(std::size_t key)
 {
     return key;
 }
 
-unsigned int Hash(int key)
+std::size_t Hash(unsigned int key)
 {
-    return static_cast<unsigned int>(key);
+    return static_cast<std::size_t>(key);
+}
+
+std::size_t Hash(int key)
+{
+    return static_cast<std::size_t>(key);
+}
+
+std::size_t Hash(float key)
+{
+    return detail::HashDouble<float, sizeof(float)>::Hash(&key);
+}
+
+std::size_t Hash(double key)
+{
+    return detail::HashDouble<double, sizeof(double)>::Hash(&key);
 }
 
 // This hashing implementation is used by Python
-unsigned int Hash(const ::std::string& str)
+std::size_t Hash(const ::std::string& str)
 {
     const unsigned char* p = reinterpret_cast<const unsigned char*>(str.c_str());
-    unsigned int result = (*p) << 7;
+    std::size_t result = (*p) << 7;
     const ::std::size_t str_size = str.size();
     for (::std::size_t i = 0; i < str_size; ++i)
     {
@@ -148,7 +170,7 @@ unsigned int Hash(const ::std::string& str)
 template<typename Key>
 struct DefaultHashMapHashPolicy
 {
-    static unsigned int DoHash(typename ParamTrait<const Key>::DeclType key)
+    static std::size_t DoHash(typename ParamTrait<const Key>::DeclType key)
     {
         return Hash(key);
     }
@@ -157,7 +179,7 @@ struct DefaultHashMapHashPolicy
 class DefaultHashMapRehashPolicy
 {
 public:
-    typedef detail::HashTablePrimeList<unsigned int> PrimeList;
+    typedef detail::HashTablePrimeList<std::size_t> PrimeList;
 
     DefaultHashMapRehashPolicy(unsigned int load_factor = 2)
     : m_load_factor(load_factor)
@@ -168,20 +190,20 @@ public:
         return (node_count / bucket_count) >= m_load_factor;
     }
 
-    unsigned int NextBucketCount(::std::size_t hint) const
+    std::size_t NextBucketCount(::std::size_t hint) const
     {
-        const unsigned int* first = PrimeList::GetPrimeList();
-        const unsigned int* last = first + detail::PRIME_NUM;
-        const unsigned int* pos = ::std::lower_bound(first, last, hint);
+        const std::size_t* first = PrimeList::GetPrimeList();
+        const std::size_t* last = first + detail::PRIME_NUM;
+        const std::size_t* pos = ::std::lower_bound(first, last, hint);
         return pos == last? *(last - 1) : *pos;
     }
 
-    unsigned int BucketCountForElements(::std::size_t elements) const
+    std::size_t BucketCountForElements(::std::size_t elements) const
     {
-        unsigned int min_bucket = elements / m_load_factor + 1;
-        const unsigned int* first = PrimeList::GetPrimeList();
-        const unsigned int* last = first + detail::PRIME_NUM;
-        const unsigned int* pos = ::std::lower_bound(first, last, min_bucket);
+        std::size_t min_bucket = elements / m_load_factor + 1;
+        const std::size_t* first = PrimeList::GetPrimeList();
+        const std::size_t* last = first + detail::PRIME_NUM;
+        const std::size_t* pos = ::std::lower_bound(first, last, min_bucket);
         return pos == last? *(last - 1) : *pos;
     }
 
@@ -391,7 +413,7 @@ public:
     typedef RehashPolicy rehash_policy;
 
 
-    HashMap(unsigned int size_hint = 0,
+    HashMap(std::size_t size_hint = 0,
             const KeyEqual& key_equal = KeyEqual(),
             const HashPolicy& hash_policy = HashPolicy(),
             const RehashPolicy& rehash_policy = RehashPolicy(),
@@ -472,7 +494,7 @@ public:
     bool Insert(typename ParamTrait<const Key>::DeclType key,
                 typename ParamTrait<const Value>::DeclType value)
     {
-        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
+        const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
         ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (FindInBucket(m_buckets + bucket_index, key) != NULL)
         {
@@ -481,7 +503,7 @@ public:
 
         if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count + 1))
         {
-            unsigned int new_bucket_count =
+            std::size_t new_bucket_count =
                     m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count + 1);
             RehashImpl(new_bucket_count);
             bucket_index = hash_code % m_bucket_count;
@@ -497,7 +519,7 @@ public:
 
     bool Find(typename ParamTrait<const Key>::DeclType key, Value& value) const
     {
-        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
+        const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
         const ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (Node* node = FindInBucket(m_buckets + bucket_index, key))
         {
@@ -512,7 +534,7 @@ public:
 
     Value& FindAndInsertIfNotPresent(typename ParamTrait<const Key>::DeclType key)
     {
-        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
+        const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
         ::std::size_t bucket_index = hash_code % m_bucket_count;
         if (Node* node = FindInBucket(m_buckets + bucket_index, key))
         {
@@ -521,7 +543,7 @@ public:
 
         if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count + 1))
         {
-            unsigned int new_bucket_count =
+            std::size_t new_bucket_count =
                     m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count + 1);
             RehashImpl(new_bucket_count);
             bucket_index = hash_code % m_bucket_count;
@@ -537,7 +559,7 @@ public:
 
     bool Delete(typename ParamTrait<const Key>::DeclType key)
     {
-        const unsigned int hash_code = m_hash_impl.hash_policy.DoHash(key);
+        const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
         const ::std::size_t bucket_index = hash_code % m_bucket_count;
         Node** prev_node = m_buckets + bucket_index;
         Node* cur_node = *prev_node;
@@ -554,7 +576,7 @@ public:
                 // But the default rehash policy will not rehash after deleting
                 if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count))
                 {
-                    unsigned int new_bucket_count =
+                    std::size_t new_bucket_count =
                             m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count);
                     RehashImpl(new_bucket_count);
                 }
@@ -589,7 +611,7 @@ public:
         m_node_count = 0;
         if (m_rehash_impl.rehash_policy.IsRehash(m_bucket_count, m_node_count))
         {
-            unsigned int new_bucket_count =
+            std::size_t new_bucket_count =
                     m_rehash_impl.rehash_policy.BucketCountForElements(m_node_count);
             RehashImpl(new_bucket_count);
         }
@@ -597,7 +619,7 @@ public:
 
     // if hint is 0, then try to rehash to fit the current node_count;
     // returns the new bucket_count
-    ::std::size_t Rehash(unsigned int size_hint = 0)
+    ::std::size_t Rehash(std::size_t size_hint = 0)
     {
         if (size_hint == 0)
         {
@@ -671,7 +693,7 @@ private:
         return NULL;
     }
 
-    void RehashImpl(unsigned int new_bucket_count)
+    void RehashImpl(std::size_t new_bucket_count)
     {
         Node** new_buckets = m_rehash_impl.allocate(new_bucket_count + 1);
         memset(new_buckets, 0, sizeof(Node*) * new_bucket_count);

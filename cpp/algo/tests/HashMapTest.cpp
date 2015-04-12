@@ -418,13 +418,13 @@ TEST(HashMap, TestNotCachedHash)
     ASSERT_GT(sizeof(HashMapCacheKey::NodeAllocator::Elem),
               sizeof(HashMapNotCacheKey::NodeAllocator::Elem));
 
-    HashMapNotCacheKey hash_map(static_cast<unsigned int>(0),
+    HashMapNotCacheKey hash_map(static_cast<std::size_t>(0),
                                 HashMapNotCacheKey::key_equal(), HashMapNotCacheKey::hash_policy(),
                                 HashMapNotCacheKey::rehash_policy());
     HashMapNotCacheKey::NodeAllocator& node_allocator = hash_map.GetNodeAllocator();
     HashMapNotCacheKey::BucketAllocator& bucket_allocator = hash_map.GetBucketAllocator();
 
-    HashMapCacheKey hash_map1(static_cast<unsigned int>(0),
+    HashMapCacheKey hash_map1(static_cast<std::size_t>(0),
                               HashMapCacheKey::key_equal(), HashMapCacheKey::hash_policy(),
                               HashMapCacheKey::rehash_policy());
     HashMapCacheKey::NodeAllocator& node_allocator1 = hash_map1.GetNodeAllocator();
