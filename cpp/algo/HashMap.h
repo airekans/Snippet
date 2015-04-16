@@ -532,6 +532,34 @@ public:
         }
     }
 
+    iterator Find(typename ParamTrait<const Key>::DeclType key)
+    {
+        const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
+        const ::std::size_t bucket_index = hash_code % m_bucket_count;
+        if (Node* node = FindInBucket(m_buckets + bucket_index, key))
+        {
+            return iterator(m_buckets + bucket_index, node);
+        }
+        else
+        {
+            return end();
+        }
+    }
+
+    const_iterator Find(typename ParamTrait<const Key>::DeclType key) const
+    {
+        const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
+        const ::std::size_t bucket_index = hash_code % m_bucket_count;
+        if (Node* node = FindInBucket(m_buckets + bucket_index, key))
+        {
+            return const_iterator(m_buckets + bucket_index, node);
+        }
+        else
+        {
+            return end();
+        }
+    }
+
     Value& FindAndInsertIfNotPresent(typename ParamTrait<const Key>::DeclType key)
     {
         const std::size_t hash_code = m_hash_impl.hash_policy.DoHash(key);
@@ -678,6 +706,12 @@ public:
     const_iterator end() const
     {
         return const_iterator(m_buckets + m_bucket_count, m_buckets[m_bucket_count]);
+    }
+
+    iterator find(typename ParamTrait<const Key>::DeclType key) { return this->Find(key); }
+    const_iterator find(typename ParamTrait<const Key>::DeclType key) const
+    {
+        return this->Find(key);
     }
 
 private:
