@@ -32,59 +32,6 @@ struct GetValue<std::string>
     }
 };
 
-template<typename T>
-static void BM_HashMapInsert(benchmark::State& state)
-{
-    HashMap<int, T> hash_map;
-    T value = GetValue<T>::Get();
-    while (state.KeepRunning())
-    {
-        for (int i = 0; i < state.range_x(); ++i)
-        {
-            hash_map.Insert(i, value);
-        }
-    }
-}
-
-template<typename T>
-static void BM_StdMapInsert(benchmark::State& state)
-{
-    std::map<int, T> std_map;
-    T value = GetValue<T>::Get();
-    while (state.KeepRunning())
-    {
-        for (int i = 0; i < state.range_x(); ++i)
-        {
-            std_map.insert(std::make_pair(i, value));
-        }
-    }
-}
-
-template<typename T>
-static void BM_StdUnorderedMapInsert(benchmark::State& state)
-{
-    std::tr1::unordered_map<int, T> std_map;
-    T value = GetValue<T>::Get();
-    while (state.KeepRunning())
-    {
-        for (int i = 0; i < state.range_x(); ++i)
-        {
-            std_map.insert(std::make_pair(i, value));
-        }
-    }
-}
-
-// Register the function as a benchmark
-// BM for <int, int>
-BENCHMARK_TEMPLATE(BM_HashMapInsert, int)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_StdMapInsert, int)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_StdUnorderedMapInsert, int)->Range(8, 8<<10);
-
-BENCHMARK_TEMPLATE(BM_HashMapInsert, std::string)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_StdMapInsert, std::string)->Range(8, 8<<10);
-BENCHMARK_TEMPLATE(BM_StdUnorderedMapInsert, std::string)->Range(8, 8<<10);
-
-
 template<typename C, typename T>
 static void BM_HashMapConstFind(benchmark::State& state)
 {
@@ -189,5 +136,6 @@ BENCHMARK_TEMPLATE2(BM_StdMapSeqFind, StrUnorderedMap, std::string)->Range(8, 8<
 
 
 BENCHMARK_MAIN();
+
 
 
