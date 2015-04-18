@@ -47,7 +47,7 @@ static void BM_HashMapConstFind(benchmark::State& state)
     {
         for (int i = 0; i < state.range_x(); ++i)
         {
-            hash_map.Find(key_to_find, value);
+            hash_map.Find(key_to_find);
         }
     }
 }
@@ -102,7 +102,7 @@ static void BM_HashMapSeqFind(benchmark::State& state)
     {
         for (int i = 0; i < state.range_x(); ++i)
         {
-            hash_map.Find(i, value);
+            hash_map.Find(i);
         }
     }
 }
