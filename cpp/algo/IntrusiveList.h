@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+namespace snippet {
 namespace algo {
 
 namespace detail {
@@ -226,5 +227,6 @@ private:
 };
 
 }  // namespace algo
+}  // namespace snippet
 
 #endif  // ALGO_INTRUSIVELIST_H_
