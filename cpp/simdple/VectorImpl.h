@@ -40,34 +40,82 @@ struct VectorImpl;
 
 template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, 16>
 {
+    static VectorImpl Load(char elem)
+    {
+        VectorImpl res;
+        res.Set(elem);
+        return res;
+    }
+
+    void Set(char elem)
+    {
+        gv = _mm_set1_epi8(elem);
+    }
+
+    void AddFrom(const VectorImpl other)
+    {
+        gv = _mm_add_epi8(gv, other.gv);
+    }
+
     VectorImpl Add(const VectorImpl other) const
     {
         VectorImpl res;
-        res.gv = _mm_add_epi8(gv, other.gv);
+        res.gv = gv;
+        res.AddFrom(other);
         return res;
+    }
+
+    void SubFrom(const VectorImpl other)
+    {
+        gv = _mm_sub_epi8(gv, other.gv);
     }
 
     VectorImpl Sub(const VectorImpl other) const
     {
         VectorImpl res;
-        res.gv = _mm_sub_epi8(gv, other.gv);
+        res.gv = gv;
+        res.SubFrom(other);
         return res;
     }
 };
 
 template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, 8>
 {
+    static VectorImpl Load(short elem)
+    {
+        VectorImpl res;
+        res.Set(elem);
+        return res;
+    }
+
+    void Set(short elem)
+    {
+        gv = _mm_set1_epi16(elem);
+    }
+
+    void AddFrom(const VectorImpl other)
+    {
+        gv = _mm_add_epi16(gv, other.gv);
+    }
+
     VectorImpl Add(const VectorImpl other) const
     {
         VectorImpl res;
-        res.gv = _mm_add_epi16(gv, other.gv);
+        res.gv = gv;
+        res.AddFrom(other);
         return res;
+    }
+
+    void SubFrom(const VectorImpl other)
+    {
+        gv = _mm_sub_epi16(gv, other.gv);
     }
 
     VectorImpl Sub(const VectorImpl other) const
     {
         VectorImpl res;
-        res.gv = _mm_sub_epi16(gv, other.gv);
+        res.gv = gv;
+        res.SubFrom(other);
         return res;
     }
 };

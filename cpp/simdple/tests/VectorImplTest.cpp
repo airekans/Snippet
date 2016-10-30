@@ -12,13 +12,16 @@ TYPED_TEST_CASE(VectorImplTest, MyTypes);
 
 TYPED_TEST(VectorImplTest, TestAdd)
 {
-    TypeParam v;
-    memset(v.data, 1, sizeof(v));
+    TypeParam v = TypeParam::Load(1);
     TypeParam v_2 = v;
     TypeParam v_3 = v.Add(v_2);
     TypeParam v_4 = v_3.Add(v);
     TypeParam v_5 = v_4.Add(v_3);
     ASSERT_EQ(1, v_5.data[0]);
+
+    v.AddFrom(v_2);
+    v_3.AddFrom(v);
+    ASSERT_EQ(1, v_3.data[0]);
 
     v = v_2 + v_5;
     v_4 = v + v_3;
@@ -28,8 +31,7 @@ TYPED_TEST(VectorImplTest, TestAdd)
 
 TYPED_TEST(VectorImplTest, TestSub)
 {
-    TypeParam v;
-    memset(v.data, 1, sizeof(v));
+    TypeParam v = TypeParam::Load(1);
     TypeParam v_2 = v;
     TypeParam v_3 = v.Sub(v_2);
     TypeParam v_4 = v_3.Sub(v);
