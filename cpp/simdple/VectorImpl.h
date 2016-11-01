@@ -24,6 +24,7 @@ struct Pack
     typedef GVT GeneralVT;
     enum { ElemNum = N };
     typedef typename StaticAssert<(sizeof(VT) / sizeof(T)) == N>::Type _ASSERT;
+    typedef typename StaticAssert<sizeof(VT) == sizeof(GVT)>::Type _ASSERT2;
     typedef typename AssertIsPowerOf2<N>::Type _IS_POWER_OF_2;
 
     union {
