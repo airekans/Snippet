@@ -35,7 +35,7 @@ TYPED_TEST(VectorImplTest, TestSub)
     TypeParam v_2 = v;
     TypeParam v_3 = v.Sub(v_2);
     TypeParam v_4 = v_3.Sub(v);
-    TypeParam v_5 = v_4.Sub(v_3);
+    TypeParam v_5 = v_4.Sub(v_2);
     ASSERT_EQ(1, v_5[0]);
 }
 
