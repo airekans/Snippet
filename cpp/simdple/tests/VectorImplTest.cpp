@@ -39,3 +39,14 @@ TYPED_TEST(VectorImplTest, TestSub)
     ASSERT_EQ(1, v_5[0]);
 }
 
+TYPED_TEST(VectorImplTest, TestAndNot)
+{
+    TypeParam v = TypeParam::Load(10);
+    TypeParam v_2 = TypeParam::Load(23);
+    TypeParam v_3 = v.BitwiseAndNot(v_2);
+    v_3 = v_3.BitwiseAndNot(v + v_2);
+    TypeParam v_4 = v + v_3;
+    v_3 = v.BitwiseAndNot(v_4 + v_2);
+    ASSERT_EQ(2, v_3[0]);
+}
+

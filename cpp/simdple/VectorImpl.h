@@ -1,20 +1,13 @@
 #ifndef CPP_SIMDPLE_VECTORIMPL_H_
 #define CPP_SIMDPLE_VECTORIMPL_H_
 
+#include <string.h>
 #include <x86intrin.h>
+
+#include "simdple/detail/Util.h"
 
 namespace simdple {
 namespace detail {
-
-template<bool> struct StaticAssert;
-template<> struct StaticAssert<true> { typedef int Type; };
-
-template<unsigned int N>
-struct AssertIsPowerOf2
-{
-    typedef typename StaticAssert<(N > 0) && ((N & (N - 1)) == 0)>::Type Type;
-};
-
 
 template<typename T, typename VT, typename GVT, unsigned int N>
 struct Pack
@@ -23,6 +16,7 @@ struct Pack
     typedef VT VType;
     typedef GVT GeneralVT;
     enum { ElemNum = N };
+    enum { SIZE = N * sizeof(T) };
     typedef typename StaticAssert<(sizeof(VT) / sizeof(T)) == N>::Type _ASSERT;
     typedef typename StaticAssert<sizeof(VT) == sizeof(GVT)>::Type _ASSERT2;
     typedef typename AssertIsPowerOf2<N>::Type _IS_POWER_OF_2;
@@ -42,6 +36,8 @@ struct Pack
     {
         return data[i];
     }
+
+    inline static size_t Size() { return SIZE; }
 };
 
 }  // namespace detail
@@ -89,31 +85,59 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
         return res;
     }
 
-    inline void AndFrom(const VectorImpl other)
+    inline void BitwiseAndFrom(const VectorImpl other)
     {
         gv = _mm_and_si128(gv, other.gv);
     }
 
-    inline VectorImpl And(const VectorImpl other) const
+    inline VectorImpl BitwiseAnd(const VectorImpl other) const
     {
         VectorImpl res;
         res.gv = gv;
-        res.AndFrom(other);
+        res.BitwiseAndFrom(other);
         return res;
     }
 
     // (!a) & b
     // This can be used in expression template to optimize
-    inline void AndNotFrom(const VectorImpl other)
+    inline void BitwiseAndNotFrom(const VectorImpl other)
     {
         gv = _mm_andnot_si128(gv, other.gv);
     }
 
-    inline VectorImpl AndNot(const VectorImpl other) const
+    inline VectorImpl BitwiseAndNot(const VectorImpl other) const
     {
         VectorImpl res;
         res.gv = gv;
-        res.AndNotFrom(other);
+        res.BitwiseAndNotFrom(other);
+        return res;
+    }
+
+    inline void BitwiseXorFrom(const VectorImpl other)
+    {
+        gv = _mm_xor_si128(gv, other.gv);
+    }
+
+    inline VectorImpl BitwiseXor(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseXorFrom(other);
+        return res;
+    }
+
+    inline void BitwiseNotSelf()
+    {
+        VectorImpl tmp;
+        ::memset(&tmp, 0xFF, sizeof(VectorImpl));
+        BitwiseXorFrom(tmp);
+    }
+
+    inline VectorImpl BitwiseNot() const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseNotSelf();
         return res;
     }
 
@@ -164,6 +188,47 @@ template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m1
         res.SubFrom(other);
         return res;
     }
+
+    inline void BitwiseAndFrom(const VectorImpl other)
+    {
+        gv = _mm_and_si128(gv, other.gv);
+    }
+
+    inline VectorImpl BitwiseAnd(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseAndFrom(other);
+        return res;
+    }
+
+    // (!a) & b
+    // This can be used in expression template to optimize
+    inline void BitwiseAndNotFrom(const VectorImpl other)
+    {
+        gv = _mm_andnot_si128(gv, other.gv);
+    }
+
+    inline VectorImpl BitwiseAndNot(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseAndNotFrom(other);
+        return res;
+    }
+
+    inline void BitwiseXorFrom(const VectorImpl other)
+    {
+        gv = _mm_xor_si128(gv, other.gv);
+    }
+
+    inline VectorImpl BitwiseXor(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseXorFrom(other);
+        return res;
+    }
 };
 
 template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i, 4> {};
@@ -186,7 +251,13 @@ inline VectorImpl<T, N> operator-(const VectorImpl<T, N> lhs, const VectorImpl<T
 template<typename T, unsigned int N>
 inline VectorImpl<T, N> operator&(const VectorImpl<T, N> lhs, const VectorImpl<T, N> rhs)
 {
-    return lhs.And(rhs);
+    return lhs.BitwiseAnd(rhs);
+}
+
+template<typename T, unsigned int N>
+inline VectorImpl<T, N> operator^(const VectorImpl<T, N> lhs, const VectorImpl<T, N> rhs)
+{
+    return lhs.BitwiseXor(rhs);
 }
 
 }  // namespace simdple
