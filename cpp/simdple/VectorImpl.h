@@ -54,6 +54,19 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
         return res;
     }
 
+    inline static VectorImpl Load(const char* addr)
+    {
+        VectorImpl res;
+        res.Set(addr);
+        return res;
+    }
+
+    // addr must be 128-bit aligned
+    inline void Set(const char* addr)
+    {
+        gv = _mm_load_si128(reinterpret_cast<const GeneralVT*>(addr));
+    }
+
     inline void Set(char elem)
     {
         gv = _mm_set1_epi8(elem);
@@ -147,6 +160,13 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
         res.gv = _mm_cmpeq_epi8(gv, other.gv);
         return res;
     }
+
+    inline VectorImpl IsGreater(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = _mm_cmpgt_epi8(gv, other.gv);
+        return res;
+    }
 };
 
 template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m128i, 8>
@@ -156,6 +176,19 @@ template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m1
         VectorImpl res;
         res.Set(elem);
         return res;
+    }
+
+    inline static VectorImpl Load(const short* addr)
+    {
+        VectorImpl res;
+        res.Set(addr);
+        return res;
+    }
+
+    // addr must be 128-bit aligned
+    inline void Set(const short* addr)
+    {
+        gv = _mm_load_si128(reinterpret_cast<const GeneralVT*>(addr));
     }
 
     inline void Set(short elem)
@@ -229,10 +262,160 @@ template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m1
         res.BitwiseXorFrom(other);
         return res;
     }
+
+    inline VectorImpl IsEqual(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = _mm_cmpeq_epi16(gv, other.gv);
+        return res;
+    }
+
+    inline VectorImpl IsGreater(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = _mm_cmpgt_epi16(gv, other.gv);
+        return res;
+    }
 };
 
-template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i, 4> {};
-template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2di, __m128i, 2> {};
+template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i, 4>
+{
+    inline static VectorImpl Load(int elem)
+    {
+        VectorImpl res;
+        res.Set(elem);
+        return res;
+    }
+
+    inline static VectorImpl Load(const int* addr)
+    {
+        VectorImpl res;
+        res.Set(addr);
+        return res;
+    }
+
+    // addr must be 128-bit aligned
+    inline void Set(const int* addr)
+    {
+        gv = _mm_load_si128(reinterpret_cast<const GeneralVT*>(addr));
+    }
+
+    inline void Set(int elem)
+    {
+        gv = _mm_set1_epi32(elem);
+    }
+
+    inline void AddFrom(const VectorImpl other)
+    {
+        gv = _mm_add_epi32(gv, other.gv);
+    }
+
+    inline VectorImpl Add(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.AddFrom(other);
+        return res;
+    }
+
+    inline void SubFrom(const VectorImpl other)
+    {
+        gv = _mm_sub_epi32(gv, other.gv);
+    }
+
+    inline VectorImpl Sub(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.SubFrom(other);
+        return res;
+    }
+
+    // (!a) & b
+    // This can be used in expression template to optimize
+    inline void BitwiseAndNotFrom(const VectorImpl other)
+    {
+        gv = _mm_andnot_si128(gv, other.gv);
+    }
+
+    inline VectorImpl BitwiseAndNot(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseAndNotFrom(other);
+        return res;
+    }
+};
+
+template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2di, __m128i, 2>
+{
+    inline static VectorImpl Load(long long elem)
+    {
+        VectorImpl res;
+        res.Set(elem);
+        return res;
+    }
+
+    inline static VectorImpl Load(const long long* addr)
+    {
+        VectorImpl res;
+        res.Set(addr);
+        return res;
+    }
+
+    // addr must be 128-bit aligned
+    inline void Set(const long long* addr)
+    {
+        gv = _mm_load_si128(reinterpret_cast<const GeneralVT*>(addr));
+    }
+
+    inline void Set(long long elem)
+    {
+        gv = _mm_set1_epi64x(elem);
+    }
+
+    inline void AddFrom(const VectorImpl other)
+    {
+        gv = _mm_add_epi64(gv, other.gv);
+    }
+
+    inline VectorImpl Add(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.AddFrom(other);
+        return res;
+    }
+
+    inline void SubFrom(const VectorImpl other)
+    {
+        gv = _mm_sub_epi64(gv, other.gv);
+    }
+
+    inline VectorImpl Sub(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.SubFrom(other);
+        return res;
+    }
+
+    // (!a) & b
+    // This can be used in expression template to optimize
+    inline void BitwiseAndNotFrom(const VectorImpl other)
+    {
+        gv = _mm_andnot_si128(gv, other.gv);
+    }
+
+    inline VectorImpl BitwiseAndNot(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.BitwiseAndNotFrom(other);
+        return res;
+    }
+};
+
 template<> struct VectorImpl<float, 4> : public detail::Pack<float, __v4sf, __m128, 4> {};
 template<> struct VectorImpl<double, 2> : public detail::Pack<double, __v2df, __m128d, 2> {};
 

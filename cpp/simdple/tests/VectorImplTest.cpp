@@ -1,14 +1,32 @@
 #include "VectorImpl.h"
 #include <gtest/gtest.h>
 #include <cstring>
+#include <malloc.h>
 
 using namespace simdple;
 
 template<typename T>
 class VectorImplTest : public ::testing::Test {};
 
-typedef ::testing::Types<VectorImpl<char, 16>, VectorImpl<short, 8> > MyTypes;
+typedef ::testing::Types<VectorImpl<char, 16>, VectorImpl<short, 8>,
+        VectorImpl<int, 4>, VectorImpl<long long, 2> > MyTypes;
 TYPED_TEST_CASE(VectorImplTest, MyTypes);
+
+TYPED_TEST(VectorImplTest, TestLoad)
+{
+    typedef typename TypeParam::ElemType ElemType;
+    ElemType* addr = reinterpret_cast<ElemType*>(
+            memalign(sizeof(TypeParam), sizeof(TypeParam)));
+    for (int i = 0; i < sizeof(TypeParam) / sizeof(*addr); ++i) {
+        addr[i] = 2;
+    }
+
+    TypeParam v = TypeParam::Load(addr);
+    ASSERT_EQ(2, v[0]);
+
+    v = TypeParam::Load(3);
+    ASSERT_EQ(3, v[0]);
+}
 
 TYPED_TEST(VectorImplTest, TestAdd)
 {
