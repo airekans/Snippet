@@ -10,6 +10,8 @@ template<typename Vec, typename ImplT>
 struct VectorExpression
 {
     typedef ImplT Impl;
+    typedef typename Impl::ElemType ElemType;
+
     Impl Eval() const { return static_cast<const Vec*>(this)->Eval(); }
 };
 
