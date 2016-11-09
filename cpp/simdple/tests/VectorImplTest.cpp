@@ -6,29 +6,34 @@
 using namespace simdple;
 
 template<typename T>
-class VectorImplTest : public ::testing::Test {};
+class GeneralVectorImplTest : public ::testing::Test {};
 
 typedef ::testing::Types<VectorImpl<char, 16>, VectorImpl<short, 8>,
-        VectorImpl<int, 4>, VectorImpl<long long, 2> > MyTypes;
-TYPED_TEST_CASE(VectorImplTest, MyTypes);
+        VectorImpl<int, 4>, VectorImpl<long long, 2>,
+        VectorImpl<float, 4>, VectorImpl<double, 2> > GeneralTypes;
+TYPED_TEST_CASE(GeneralVectorImplTest, GeneralTypes);
 
-TYPED_TEST(VectorImplTest, TestLoad)
+TYPED_TEST(GeneralVectorImplTest, TestLoad)
 {
     typedef typename TypeParam::ElemType ElemType;
     ElemType* addr = reinterpret_cast<ElemType*>(
             memalign(sizeof(TypeParam), sizeof(TypeParam)));
     for (int i = 0; i < sizeof(TypeParam) / sizeof(*addr); ++i) {
-        addr[i] = 2;
+        addr[i] = i + 1;
     }
 
     TypeParam v = TypeParam::Load(addr);
-    ASSERT_EQ(2, v[0]);
+    for (size_t i = 0; i < TypeParam::ElemNum; ++i) {
+        ASSERT_EQ(i + 1, v[i]);
+    }
 
     v = TypeParam::Load(3);
-    ASSERT_EQ(3, v[0]);
+    for (size_t i = 0; i < TypeParam::ElemNum; ++i) {
+        ASSERT_EQ(3, v[i]);
+    }
 }
 
-TYPED_TEST(VectorImplTest, TestAdd)
+TYPED_TEST(GeneralVectorImplTest, TestAdd)
 {
     TypeParam v = TypeParam::Load(1);
     TypeParam v_2 = v;
@@ -47,7 +52,7 @@ TYPED_TEST(VectorImplTest, TestAdd)
     ASSERT_EQ(22, v_3[0]);
 }
 
-TYPED_TEST(VectorImplTest, TestSub)
+TYPED_TEST(GeneralVectorImplTest, TestSub)
 {
     TypeParam v = TypeParam::Load(10);
     TypeParam v_2 = TypeParam::Load(5);
@@ -57,7 +62,14 @@ TYPED_TEST(VectorImplTest, TestSub)
     ASSERT_EQ(-10, v_5[0]);
 }
 
-TYPED_TEST(VectorImplTest, TestAndNot)
+template<typename T>
+class VectorImplBitwiseTest : public ::testing::Test {};
+
+typedef ::testing::Types<VectorImpl<char, 16>, VectorImpl<short, 8>,
+        VectorImpl<int, 4>, VectorImpl<long long, 2> > BitwiseTypes;
+TYPED_TEST_CASE(VectorImplBitwiseTest, BitwiseTypes);
+
+TYPED_TEST(VectorImplBitwiseTest, TestAndNot)
 {
     TypeParam v = TypeParam::Load(10);
     TypeParam v_2 = TypeParam::Load(23);

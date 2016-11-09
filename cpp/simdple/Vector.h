@@ -12,7 +12,8 @@ struct VectorExpression
     typedef ImplT Impl;
     typedef typename Impl::ElemType ElemType;
 
-    Impl Eval() const { return static_cast<const Vec*>(this)->Eval(); }
+    inline Impl Eval() const { return static_cast<const Vec*>(this)->Eval(); }
+    inline ElemType operator[](size_t i) const { return Eval()[i]; }
 };
 
 }  // namespace simdple
@@ -23,10 +24,12 @@ struct Vector : public detail::VectorExpression<Vector<T, N>, VectorImpl<T, N> >
 {
     typedef VectorImpl<T, N> Impl;
 
-    explicit Vector(T elem) : v(Impl::Load(elem)) {}
+    inline explicit Vector(T elem) : v(Impl::Load(elem)) {}
 
     template<typename Vec>
-    explicit Vector(const detail::VectorExpression<Vec, Impl>& e) : v(e.Eval()) {}
+    inline explicit Vector(const detail::VectorExpression<Vec, Impl>& e)
+    : v(e.Eval())
+    {}
 
     template<typename Vec>
     inline Vector& operator=(const detail::VectorExpression<Vec, Impl>& e)

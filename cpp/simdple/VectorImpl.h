@@ -416,8 +416,113 @@ template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2
     }
 };
 
-template<> struct VectorImpl<float, 4> : public detail::Pack<float, __v4sf, __m128, 4> {};
-template<> struct VectorImpl<double, 2> : public detail::Pack<double, __v2df, __m128d, 2> {};
+template<> struct VectorImpl<float, 4> : public detail::Pack<float, __v4sf, __m128, 4>
+{
+    inline static VectorImpl Load(float elem)
+    {
+        VectorImpl res;
+        res.Set(elem);
+        return res;
+    }
+
+    inline static VectorImpl Load(const float* addr)
+    {
+        VectorImpl res;
+        res.Set(addr);
+        return res;
+    }
+
+    // addr must be 128-bit aligned
+    inline void Set(const float* addr)
+    {
+        gv = _mm_load_ps(addr);
+    }
+
+    inline void Set(float elem)
+    {
+        gv = _mm_set1_ps(elem);
+    }
+
+    inline void AddFrom(const VectorImpl other)
+    {
+        gv = _mm_add_ps(gv, other.gv);
+    }
+
+    inline VectorImpl Add(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.AddFrom(other);
+        return res;
+    }
+
+    inline void SubFrom(const VectorImpl other)
+    {
+        gv = _mm_sub_ps(gv, other.gv);
+    }
+
+    inline VectorImpl Sub(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.SubFrom(other);
+        return res;
+    }
+};
+
+template<> struct VectorImpl<double, 2> : public detail::Pack<double, __v2df, __m128d, 2>
+{
+    inline static VectorImpl Load(double elem)
+    {
+        VectorImpl res;
+        res.Set(elem);
+        return res;
+    }
+
+    inline static VectorImpl Load(const double* addr)
+    {
+        VectorImpl res;
+        res.Set(addr);
+        return res;
+    }
+
+    // addr must be 128-bit aligned
+    inline void Set(const double* addr)
+    {
+        gv = _mm_load_pd(addr);
+    }
+
+    inline void Set(double elem)
+    {
+        gv = _mm_set1_pd(elem);
+    }
+
+    inline void AddFrom(const VectorImpl other)
+    {
+        gv = _mm_add_pd(gv, other.gv);
+    }
+
+    inline VectorImpl Add(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.AddFrom(other);
+        return res;
+    }
+
+    inline void SubFrom(const VectorImpl other)
+    {
+        gv = _mm_sub_pd(gv, other.gv);
+    }
+
+    inline VectorImpl Sub(const VectorImpl other) const
+    {
+        VectorImpl res;
+        res.gv = gv;
+        res.SubFrom(other);
+        return res;
+    }
+};
 
 template<typename T, unsigned int N>
 inline VectorImpl<T, N> operator+(const VectorImpl<T, N> lhs, const VectorImpl<T, N> rhs)
