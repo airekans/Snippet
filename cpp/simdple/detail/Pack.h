@@ -73,6 +73,28 @@ struct Pack
     }
 };
 
+template<typename T, typename VT, typename GVT, unsigned int N>
+struct IntegerPack : public Pack<T, VT, GVT, N>
+{
+    typedef typename Pack<T, VT, GVT, N>::Impl Impl;
+
+    inline Impl BitwiseAndNot(const Impl other) const
+    {
+        Impl res;
+        res.gv = this->gv;
+        res.BitwiseAndNotFrom(other);
+        return res;
+    }
+
+    inline Impl BitwiseXor(const Impl other) const
+    {
+        Impl res;
+        res.gv = this->gv;
+        res.BitwiseXorFrom(other);
+        return res;
+    }
+};
+
 }  // namespace detail
 }  // namespace simdple
 

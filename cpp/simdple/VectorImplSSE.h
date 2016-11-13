@@ -8,7 +8,8 @@
 
 namespace simdple {
 
-template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m128i, 16>
+template<> struct VectorImpl<char, 16> :
+    public detail::IntegerPack<char, __v16qi, __m128i, 16>
 {
     // addr must be 128-bit aligned
     inline void Set(const char* addr)
@@ -51,25 +52,9 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
         gv = _mm_andnot_si128(gv, other.gv);
     }
 
-    inline VectorImpl BitwiseAndNot(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.BitwiseAndNotFrom(other);
-        return res;
-    }
-
     inline void BitwiseXorFrom(const VectorImpl other)
     {
         gv = _mm_xor_si128(gv, other.gv);
-    }
-
-    inline VectorImpl BitwiseXor(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.BitwiseXorFrom(other);
-        return res;
     }
 
     inline void BitwiseNotSelf()
@@ -102,7 +87,8 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
     }
 };
 
-template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m128i, 8>
+template<> struct VectorImpl<short, 8> :
+    public detail::IntegerPack<short, __v8hi, __m128i, 8>
 {
     // addr must be 128-bit aligned
     inline void Set(const short* addr)
@@ -181,7 +167,8 @@ template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m1
     }
 };
 
-template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i, 4>
+template<> struct VectorImpl<int, 4> :
+    public detail::IntegerPack<int, __v4si, __m128i, 4>
 {
     // addr must be 128-bit aligned
     inline void Set(const int* addr)
@@ -220,7 +207,8 @@ template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i,
     }
 };
 
-template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2di, __m128i, 2>
+template<> struct VectorImpl<long long, 2> :
+    public detail::IntegerPack<long long, __v2di, __m128i, 2>
 {
     // addr must be 128-bit aligned
     inline void Set(const long long* addr)
