@@ -1,6 +1,7 @@
 #ifndef CPP_SIMDPLE_VECTOR_H_
 #define CPP_SIMDPLE_VECTOR_H_
 
+#include "simdple/Constant.h"
 #include "simdple/VectorImpl.h"
 
 namespace simdple {
@@ -19,7 +20,7 @@ struct VectorExpression
 }  // namespace simdple
 
 
-template<typename T, unsigned int N>
+template<typename T, unsigned int N = MAX_BYTE_NUM / sizeof(T)>
 struct Vector : public detail::VectorExpression<Vector<T, N>, VectorImpl<T, N> >
 {
     typedef VectorImpl<T, N> Impl;
