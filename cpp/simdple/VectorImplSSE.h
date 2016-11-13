@@ -10,20 +10,6 @@ namespace simdple {
 
 template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m128i, 16>
 {
-    inline static VectorImpl Load(char elem)
-    {
-        VectorImpl res;
-        res.Set(elem);
-        return res;
-    }
-
-    inline static VectorImpl Load(const char* addr)
-    {
-        VectorImpl res;
-        res.Set(addr);
-        return res;
-    }
-
     // addr must be 128-bit aligned
     inline void Set(const char* addr)
     {
@@ -40,25 +26,9 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
         gv = _mm_add_epi8(gv, other.gv);
     }
 
-    inline VectorImpl Add(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.AddFrom(other);
-        return res;
-    }
-
     inline void SubFrom(const VectorImpl other)
     {
         gv = _mm_sub_epi8(gv, other.gv);
-    }
-
-    inline VectorImpl Sub(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.SubFrom(other);
-        return res;
     }
 
     inline void BitwiseAndFrom(const VectorImpl other)
@@ -134,20 +104,6 @@ template<> struct VectorImpl<char, 16> : public detail::Pack<char, __v16qi, __m1
 
 template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m128i, 8>
 {
-    inline static VectorImpl Load(short elem)
-    {
-        VectorImpl res;
-        res.Set(elem);
-        return res;
-    }
-
-    inline static VectorImpl Load(const short* addr)
-    {
-        VectorImpl res;
-        res.Set(addr);
-        return res;
-    }
-
     // addr must be 128-bit aligned
     inline void Set(const short* addr)
     {
@@ -164,25 +120,9 @@ template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m1
         gv = _mm_add_epi16(gv, other.gv);
     }
 
-    inline VectorImpl Add(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.AddFrom(other);
-        return res;
-    }
-
     inline void SubFrom(const VectorImpl other)
     {
         gv = _mm_sub_epi16(gv, other.gv);
-    }
-
-    inline VectorImpl Sub(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.SubFrom(other);
-        return res;
     }
 
     inline void BitwiseAndFrom(const VectorImpl other)
@@ -243,20 +183,6 @@ template<> struct VectorImpl<short, 8> : public detail::Pack<short, __v8hi, __m1
 
 template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i, 4>
 {
-    inline static VectorImpl Load(int elem)
-    {
-        VectorImpl res;
-        res.Set(elem);
-        return res;
-    }
-
-    inline static VectorImpl Load(const int* addr)
-    {
-        VectorImpl res;
-        res.Set(addr);
-        return res;
-    }
-
     // addr must be 128-bit aligned
     inline void Set(const int* addr)
     {
@@ -273,25 +199,9 @@ template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i,
         gv = _mm_add_epi32(gv, other.gv);
     }
 
-    inline VectorImpl Add(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.AddFrom(other);
-        return res;
-    }
-
     inline void SubFrom(const VectorImpl other)
     {
         gv = _mm_sub_epi32(gv, other.gv);
-    }
-
-    inline VectorImpl Sub(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.SubFrom(other);
-        return res;
     }
 
     // (!a) & b
@@ -312,20 +222,6 @@ template<> struct VectorImpl<int, 4> : public detail::Pack<int, __v4si, __m128i,
 
 template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2di, __m128i, 2>
 {
-    inline static VectorImpl Load(long long elem)
-    {
-        VectorImpl res;
-        res.Set(elem);
-        return res;
-    }
-
-    inline static VectorImpl Load(const long long* addr)
-    {
-        VectorImpl res;
-        res.Set(addr);
-        return res;
-    }
-
     // addr must be 128-bit aligned
     inline void Set(const long long* addr)
     {
@@ -342,25 +238,9 @@ template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2
         gv = _mm_add_epi64(gv, other.gv);
     }
 
-    inline VectorImpl Add(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.AddFrom(other);
-        return res;
-    }
-
     inline void SubFrom(const VectorImpl other)
     {
         gv = _mm_sub_epi64(gv, other.gv);
-    }
-
-    inline VectorImpl Sub(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.SubFrom(other);
-        return res;
     }
 
     // (!a) & b
@@ -381,20 +261,6 @@ template<> struct VectorImpl<long long, 2> : public detail::Pack<long long, __v2
 
 template<> struct VectorImpl<float, 4> : public detail::Pack<float, __v4sf, __m128, 4>
 {
-    inline static VectorImpl Load(float elem)
-    {
-        VectorImpl res;
-        res.Set(elem);
-        return res;
-    }
-
-    inline static VectorImpl Load(const float* addr)
-    {
-        VectorImpl res;
-        res.Set(addr);
-        return res;
-    }
-
     // addr must be 128-bit aligned
     inline void Set(const float* addr)
     {
@@ -411,44 +277,14 @@ template<> struct VectorImpl<float, 4> : public detail::Pack<float, __v4sf, __m1
         gv = _mm_add_ps(gv, other.gv);
     }
 
-    inline VectorImpl Add(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.AddFrom(other);
-        return res;
-    }
-
     inline void SubFrom(const VectorImpl other)
     {
         gv = _mm_sub_ps(gv, other.gv);
-    }
-
-    inline VectorImpl Sub(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.SubFrom(other);
-        return res;
     }
 };
 
 template<> struct VectorImpl<double, 2> : public detail::Pack<double, __v2df, __m128d, 2>
 {
-    inline static VectorImpl Load(double elem)
-    {
-        VectorImpl res;
-        res.Set(elem);
-        return res;
-    }
-
-    inline static VectorImpl Load(const double* addr)
-    {
-        VectorImpl res;
-        res.Set(addr);
-        return res;
-    }
-
     // addr must be 128-bit aligned
     inline void Set(const double* addr)
     {
@@ -465,25 +301,9 @@ template<> struct VectorImpl<double, 2> : public detail::Pack<double, __v2df, __
         gv = _mm_add_pd(gv, other.gv);
     }
 
-    inline VectorImpl Add(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.AddFrom(other);
-        return res;
-    }
-
     inline void SubFrom(const VectorImpl other)
     {
         gv = _mm_sub_pd(gv, other.gv);
-    }
-
-    inline VectorImpl Sub(const VectorImpl other) const
-    {
-        VectorImpl res;
-        res.gv = gv;
-        res.SubFrom(other);
-        return res;
     }
 };
 

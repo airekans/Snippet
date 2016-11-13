@@ -42,19 +42,35 @@ struct Pack
 
     inline static size_t Size() { return SIZE; }
 
-//    inline static Impl Load(T elem)
-//    {
-//        Impl res;
-//        res.Set(elem);
-//        return res;
-//    }
-//
-//    inline static Impl Load(const T* addr)
-//    {
-//        Impl res;
-//        res.Set(addr);
-//        return res;
-//    }
+    inline static Impl Load(T elem)
+    {
+        Impl res;
+        res.Set(elem);
+        return res;
+    }
+
+    inline static Impl Load(const T* addr)
+    {
+        Impl res;
+        res.Set(addr);
+        return res;
+    }
+
+    inline Impl Add(const Impl other) const
+    {
+        Impl res;
+        res.gv = gv;
+        res.AddFrom(other);
+        return res;
+    }
+
+    inline Impl Sub(const Impl other) const
+    {
+        Impl res;
+        res.gv = gv;
+        res.SubFrom(other);
+        return res;
+    }
 };
 
 }  // namespace detail
