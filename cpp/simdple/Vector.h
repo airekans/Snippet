@@ -138,9 +138,12 @@ struct BitwiseAndVector<LVec, BitwiseNotVector<RVec> > :
 
 }  // namespace detail
 
+
+namespace op {
+
 template<typename LVec, typename RVec, typename Impl>
 inline detail::AddVector<detail::VectorExpression<LVec, Impl>,
-    detail::VectorExpression<RVec, Impl> > operator+(
+    detail::VectorExpression<RVec, Impl> > Add(
         const detail::VectorExpression<LVec, Impl>& lhs,
         const detail::VectorExpression<RVec, Impl>& rhs)
 {
@@ -150,15 +153,13 @@ inline detail::AddVector<detail::VectorExpression<LVec, Impl>,
 
 template<typename LVec, typename RVec, typename Impl>
 inline detail::SubVector<detail::VectorExpression<LVec, Impl>,
-    detail::VectorExpression<RVec, Impl> > operator-(
+    detail::VectorExpression<RVec, Impl> > Sub(
         const detail::VectorExpression<LVec, Impl>& lhs,
         const detail::VectorExpression<RVec, Impl>& rhs)
 {
     return detail::SubVector<detail::VectorExpression<LVec, Impl>,
             detail::VectorExpression<RVec, Impl> >(lhs, rhs);
 }
-
-namespace op {
 
 template<typename Vec, typename Impl>
 inline detail::BitwiseNotVector<detail::VectorExpression<Vec, Impl> >
@@ -169,9 +170,32 @@ inline detail::BitwiseNotVector<detail::VectorExpression<Vec, Impl> >
 
 }  // namespace op
 
+
+template<typename LVec, typename RVec, typename Impl>
+inline detail::AddVector<detail::VectorExpression<LVec, Impl>,
+    detail::VectorExpression<RVec, Impl> > operator+(
+        const detail::VectorExpression<LVec, Impl>& lhs,
+        const detail::VectorExpression<RVec, Impl>& rhs)
+{
+    return op::Add(lhs, rhs);
+}
+
+template<typename LVec, typename RVec, typename Impl>
+inline detail::SubVector<detail::VectorExpression<LVec, Impl>,
+    detail::VectorExpression<RVec, Impl> > operator-(
+        const detail::VectorExpression<LVec, Impl>& lhs,
+        const detail::VectorExpression<RVec, Impl>& rhs)
+{
+    return op::Sub(lhs, rhs);
+}
+
+// integer only
 template<typename LVec, typename RVec>
 inline detail::BitwiseAndVector<LVec, RVec> operator&(const LVec& lhs, const RVec& rhs)
 {
+    typedef typename LVec::ElemType ElemType;
+    typedef typename detail::StaticAssert<
+            (detail::IsInteger<ElemType>::Result != 0)>::Type _ASSERT;
     return detail::BitwiseAndVector<LVec, RVec>(lhs, rhs);
 }
 

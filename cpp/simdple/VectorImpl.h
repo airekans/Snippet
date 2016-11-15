@@ -3,6 +3,7 @@
 
 #include "simdple/detail/Pack.h"
 #include "simdple/VectorImplSSE.h"
+#include "simdple/VectorImplAVX.h"
 
 namespace simdple {
 

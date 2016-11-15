@@ -10,7 +10,11 @@ class GeneralVectorImplTest : public ::testing::Test {};
 
 typedef ::testing::Types<VectorImpl<char, 16>, VectorImpl<short, 8>,
         VectorImpl<int, 4>, VectorImpl<long long, 2>,
-        VectorImpl<float, 4>, VectorImpl<double, 2> > GeneralTypes;
+        VectorImpl<float, 4>, VectorImpl<double, 2>
+#ifdef __AVX2__
+        , VectorImpl<char, 32>
+#endif
+> GeneralTypes;
 TYPED_TEST_CASE(GeneralVectorImplTest, GeneralTypes);
 
 TYPED_TEST(GeneralVectorImplTest, TestLoad)

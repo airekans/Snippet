@@ -78,6 +78,8 @@ struct IntegerPack : public Pack<T, VT, GVT, N>
 {
     typedef typename Pack<T, VT, GVT, N>::Impl Impl;
 
+    typedef typename StaticAssert<(IsInteger<T>::Result != 0)>::Type _ASSERT;
+
     inline Impl BitwiseAndNot(const Impl other) const
     {
         Impl res;
