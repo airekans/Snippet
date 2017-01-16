@@ -5,34 +5,33 @@
 #include <utility>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
+
+#include "algo/ParamTrait.h"
 
 namespace snippet {
 namespace algo {
 
+namespace detail {
+
+template<typename KType, typename VType, unsigned int NodeSize = 512>
 class BTreeNode
 {
 public:
-    typedef int KeyType;
-    typedef std::string ValueType;
+    typedef KType KeyType;
+    typedef typename ParamTrait<const KeyType>::DeclType KeyDeclType;
+    typedef VType ValueType;
     typedef std::pair<KeyType, ValueType> Elem;
 
-    static void DiskRead(const BTreeNode* node)
-    {
-        // TODO: read the node from disk
-    }
-
-    static void DiskWrite(const BTreeNode& node)
-    {
-        // TODO: write the node to the disk
-    }
-
+    static const unsigned int MAX_KEY_NUM =
+            (NodeSize - sizeof(BTreeNode*)) / (sizeof(Elem) + sizeof(BTreeNode*));
+    static const unsigned int CHILDREN_SIZE = MAX_KEY_NUM + 1;
 
     /// max_key_num should be an odd number
     BTreeNode(const unsigned max_key_num)
-    : m_max_key_num(max_key_num),
-      m_key_num(0)
+    : m_key_num(0), m_is_leave(true)
     {
-        memset(m_children, 0, 1025 * sizeof(m_children[0]));
+        memset(m_children, 0, CHILDREN_SIZE * sizeof(m_children[0]));
     }
 
     ~BTreeNode()
@@ -100,7 +99,7 @@ public:
 
     unsigned GetMaxKeyNum() const
     {
-        return m_max_key_num;
+        return MAX_KEY_NUM;
     }
 
     unsigned GetKeyNum() const
@@ -110,15 +109,12 @@ public:
 
     /// get the key at index i, if i >= m_key_num,
     /// the result is undefined.
-    KeyType GetKey(const unsigned i) const
+    inline KeyType GetKey(const unsigned i) const
     {
         return m_elements[i].first;
     }
 
-    bool IsLeave() const
-    {
-        return m_is_leave;
-    }
+    inline bool IsLeave() const { return m_is_leave; }
 
     /// get the child at index i, if i > m_key_num,
     /// the result is NULL;
@@ -129,7 +125,7 @@ public:
 
     void SplitChild(const unsigned i, BTreeNode& child)
     {
-        const unsigned max_key_num = m_max_key_num;
+        const unsigned max_key_num = MAX_KEY_NUM;
         const unsigned min_key_num = max_key_num / 2;
         BTreeNode* new_child = new BTreeNode(max_key_num);
         new_child->SetIsLeave(child.IsLeave());
@@ -163,10 +159,6 @@ public:
         }
         m_elements[i] = child.m_elements[min_key_num];
         ++m_key_num;
-
-        DiskWrite(child);
-        DiskWrite(*new_child);
-        DiskWrite(*this);
     }
 
     void InsertNonfull(const KeyType key, const ValueType& value)
@@ -181,7 +173,6 @@ public:
             }
             SetItem(static_cast<unsigned>(i) + 1, key, value);
             ++m_key_num;
-            DiskWrite(*this);
         }
         else
         {
@@ -191,8 +182,7 @@ public:
             }
             ++i;
             BTreeNode* child = m_children[i];
-            DiskRead(child);
-            if (child->GetKeyNum() == m_max_key_num)
+            if (child->GetKeyNum() == MAX_KEY_NUM)
             {
                 SplitChild(static_cast<unsigned>(i), *child);
                 if (key > GetKey(static_cast<unsigned>(i)))
@@ -207,6 +197,7 @@ public:
     bool Find(const KeyType key, unsigned* idx) const
     {
         KeyType cur_key;
+        // TODO: use lower bound here
         for (unsigned i = 0; i < m_key_num; ++i)
         {
             cur_key = GetKey(i);
@@ -253,15 +244,12 @@ public:
             m_elements[i - 1] = m_elements[i];
         }
         --m_key_num;
-        BTreeNode::DiskWrite(*this);
     }
 
     BTreeNode* MergeChildren(const unsigned idx)
     {
         BTreeNode* first_child = m_children[idx];
         BTreeNode* second_child = m_children[idx + 1];
-        BTreeNode::DiskRead(first_child);
-        BTreeNode::DiskRead(second_child);
         const unsigned first_old_key_num = first_child->m_key_num;
         const unsigned second_old_key_num = second_child->m_key_num;
 
@@ -280,7 +268,6 @@ public:
                                   second_child->m_children[i]);
         }
         first_child->m_key_num += second_old_key_num + 1;
-        BTreeNode::DiskWrite(*first_child);
 
         // move the key backward in the parent.
         for (unsigned i = idx; i < m_key_num - 1; ++i)
@@ -294,7 +281,6 @@ public:
             m_children[i] = m_children[i + 1];
         }
         --m_key_num;
-        BTreeNode::DiskWrite(*this);
 
         second_child->SetKeyNum(0); // we have to reset before deleting
         delete second_child;
@@ -306,18 +292,14 @@ public:
     {
         BTreeNode* left_child = m_children[idx];
         BTreeNode* right_child = m_children[idx + 1];
-        BTreeNode::DiskRead(left_child);
-        BTreeNode::DiskRead(right_child);
         const unsigned left_key_num = left_child->GetKeyNum();
         const unsigned right_key_num = right_child->GetKeyNum();
 
         left_child->m_elements[left_key_num] = m_elements[idx];
         left_child->m_children[left_key_num + 1] = right_child->m_children[0];
         ++(left_child->m_key_num);
-        BTreeNode::DiskWrite(*left_child);
 
         m_elements[idx] = right_child->m_elements[0];
-        BTreeNode::DiskWrite(*this);
 
         for (unsigned i = 0; i < right_key_num - 1; ++i)
         {
@@ -327,15 +309,12 @@ public:
         right_child->m_children[right_key_num - 1] =
                 right_child->m_children[right_key_num];
         --(right_child->m_key_num);
-        BTreeNode::DiskWrite(*right_child);
     }
 
     void RightShiftKey(const unsigned idx)
     {
         BTreeNode* left_child = m_children[idx];
         BTreeNode* right_child = m_children[idx + 1];
-        BTreeNode::DiskRead(left_child);
-        BTreeNode::DiskRead(right_child);
         const unsigned left_key_num = left_child->GetKeyNum();
         const unsigned right_key_num = right_child->GetKeyNum();
 
@@ -348,13 +327,10 @@ public:
         right_child->m_elements[0] = m_elements[idx];
         right_child->m_children[0] = left_child->m_children[left_key_num];
         ++(right_child->m_key_num);
-        BTreeNode::DiskWrite(*right_child);
 
         m_elements[idx] = left_child->m_elements[left_key_num - 1];
-        BTreeNode::DiskWrite(*this);
 
         --(left_child->m_key_num);
-        BTreeNode::DiskWrite(*left_child);
     }
 
     void SetKeyNum(const unsigned key_num)
@@ -374,21 +350,24 @@ public:
     }
 
 private:
-    const unsigned m_max_key_num;
-    Elem m_elements[1024];
-    BTreeNode* m_children[1025];
-    unsigned m_key_num;
+    Elem m_elements[MAX_KEY_NUM];
+    BTreeNode* m_children[CHILDREN_SIZE];
+    unsigned int m_key_num;
     bool m_is_leave;
 };
+
+}  // namespace detail
+
 
 class BTree
 {
 public:
+    typedef detail::BTreeNode<int, ::std::string> BTreeNode;
+
     BTree(const unsigned max_key_num)
     {
         m_root = new BTreeNode(max_key_num);
         m_root->SetIsLeave(true);
-        BTreeNode::DiskWrite(*m_root);
     }
 
     ~BTree()
@@ -439,9 +418,6 @@ public:
         }
         else if (m_root->GetKeyNum() == 1 && !m_root->IsLeave())
         {
-            BTreeNode::DiskRead(m_root->GetChild(0));
-            BTreeNode::DiskRead(m_root->GetChild(1));
-
             BTreeNode* first_child = m_root->GetChild(0);
             BTreeNode* second_child = m_root->GetChild(1);
             const unsigned min_key_num = m_root->GetMaxKeyNum() / 2;
@@ -493,7 +469,6 @@ private:
         else
         {
             BTreeNode* child_node = node.GetChild(i);
-            BTreeNode::DiskRead(child_node);
             return Find(*child_node, key, out_node, out_index);
         }
     }
@@ -514,7 +489,6 @@ private:
         {
             const unsigned min_key_num = node.GetMaxKeyNum() / 2;
             BTreeNode* cur_child = node.GetChild(key_idx);
-            BTreeNode::DiskRead(cur_child);
             if (cur_child->GetKeyNum() > min_key_num) // case 2a
             {
                 int prev_key = 0;
@@ -526,7 +500,6 @@ private:
             }
 
             BTreeNode* next_child = node.GetChild(key_idx + 1);
-            BTreeNode::DiskRead(next_child);
             if (next_child->GetKeyNum() > min_key_num) // case 2b
             {
                 int next_key = 0;
@@ -544,7 +517,6 @@ private:
         else // case 3
         {
             BTreeNode* child = node.GetChild(key_idx);
-            BTreeNode::DiskRead(child);
             const unsigned min_key_num = node.GetMaxKeyNum() / 2;
             if (child->GetKeyNum() <= min_key_num)
             {
@@ -553,12 +525,10 @@ private:
                 if (key_idx > 0)
                 {
                     prev_child = node.GetChild(key_idx - 1);
-                    BTreeNode::DiskRead(prev_child);
                 }
                 if (key_idx < node.GetKeyNum())
                 {
                     next_child = node.GetChild(key_idx + 1);
-                    BTreeNode::DiskRead(next_child);
                 }
 
                 // case 3a
